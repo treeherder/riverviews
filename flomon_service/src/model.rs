@@ -88,3 +88,19 @@ pub enum NwisError {
     /// A reading exists but is older than the configured freshness threshold.
     StaleData { site: String, age_minutes: u64 },
 }
+
+impl std::fmt::Display for NwisError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NwisError::HttpError(code) => write!(f, "HTTP error: {}", code),
+            NwisError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            NwisError::SiteNotFound(site) => write!(f, "Site not found: {}", site),
+            NwisError::NoDataAvailable(site) => write!(f, "No data available for site: {}", site),
+            NwisError::StaleData { site, age_minutes } => {
+                write!(f, "Stale data for site {}: {} minutes old", site, age_minutes)
+            }
+        }
+    }
+}
+
+impl std::error::Error for NwisError {}
