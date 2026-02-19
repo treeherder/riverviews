@@ -1,0 +1,16 @@
+USGS NWIS Instantaneous Values API — waterservices.usgs.gov/nws/iv/ — real-time gauge data in JSON/WaterML, updated every 15 minutes. This is your core data feed.
+
+NWS API — api.weather.gov — forecast data, alerts, and river stage forecasts.
+
+NOAA AHPS — water.noaa.gov — river forecasts with predicted crests and flood stage thresholds.
+
+USACE Chicago District — the Army Corps publishes lock and dam operational data, though it's less consistently API-accessible than USGS.
+
+Iowa Environmental Mesonet — mesonet.agron.iastate.edu — aggregates a ton of Midwest hydrology and weather data with good APIs.
+
+NOAA MRMS — precipitation QPE via NOAA's NOMADS server.
+
+
+
+1. determine what data can be taken from waterservices.usgs.gov/nws/iv/
+
