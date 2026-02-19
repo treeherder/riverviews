@@ -49,10 +49,15 @@ The USGS typically places gauges just above or below each lock. The USGS NWIS si
 - [X] Prepare database (PostgreSQL?)    
     - [X] Create schema for historical data with instantaneous value integration
     - [X] Monitor and update staleness to know availability/frequency of IV data updates
+
+- [ ] Cross reference actual recorded flood events with collected data
+    - [ ] find frame of reference for historical flood events within the data
+        - [ ] potentially use regression analysis to identify thresholds of change in this data set (and others) relative to the impact of recorded and potentially unrecorded near-threshold flood events
+        - [ ] design a model for alerting on the severity of near-threshold events
+        - [ ] prioritize alerting on upstream threshold events that trend towards being impactful in upper peoria lake area, specifically the eastern bank when possible.
 - [ ] Set up VPS for hosting
 - [ ] Determine alert infrastructure
 - [ ] Design dashboard interface
-
 ---
 
 ## Technical Reference
