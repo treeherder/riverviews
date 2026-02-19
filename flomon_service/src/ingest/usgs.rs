@@ -10,12 +10,83 @@
 /// annotated examples of the response structure.
 
 use crate::model::{GaugeReading, NwisError};
+use serde::Deserialize;
+
+// ---------------------------------------------------------------------------
+// Serde structures for WaterML JSON deserialization
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct IvResponse {
+    value: ValueWrapper,
+}
+
+#[derive(Deserialize)]
+struct ValueWrapper {
+    #[serde(rename = "timeSeries")]
+    time_series: Vec<TimeSeries>,
+}
+
+#[derive(Deserialize)]
+struct TimeSeries {
+    #[serde(rename = "sourceInfo")]
+    source_info: SourceInfo,
+    variable: Variable,
+    values: Vec<Values>,
+}
+
+#[derive(Deserialize)]
+struct SourceInfo {
+    #[serde(rename = "siteName")]
+    site_name: String,
+    #[serde(rename = "siteCode")]
+    site_code: Vec<SiteCode>,
+}
+
+#[derive(Deserialize)]
+struct SiteCode {
+    value: String,
+}
+
+#[derive(Deserialize)]
+struct Variable {
+    #[serde(rename = "variableCode")]
+    variable_code: Vec<VariableCode>,
+    unit: Unit,
+    #[serde(rename = "noDataValue")]
+    no_data_value: f64,
+}
+
+#[derive(Deserialize)]
+struct VariableCode {
+    value: String,
+}
+
+#[derive(Deserialize)]
+struct Unit {
+    #[serde(rename = "unitCode")]
+    unit_code: String,
+}
+
+#[derive(Deserialize)]
+struct Values {
+    value: Vec<ValueEntry>,
+}
+
+#[derive(Deserialize)]
+struct ValueEntry {
+    value: String,  // USGS returns as string!
+    qualifiers: Vec<String>,
+    #[serde(rename = "dateTime")]
+    date_time: String,
+}
 
 // ---------------------------------------------------------------------------
 // URL construction
 // ---------------------------------------------------------------------------
 
 const IV_BASE_URL: &str = "https://waterservices.usgs.gov/nwis/iv/";
+const DV_BASE_URL: &str = "https://waterservices.usgs.gov/nwis/dv/";
 
 /// Builds a USGS IV API URL for the given site codes, parameter codes,
 /// and ISO 8601 period (e.g. `"PT1H"` for the past hour, `"PT3H"` for
@@ -26,18 +97,69 @@ const IV_BASE_URL: &str = "https://waterservices.usgs.gov/nwis/iv/";
 ///
 /// # Example
 /// ```
+/// use crate::ingest::usgs::build_iv_url;
+/// use crate::stations::{PARAM_DISCHARGE, PARAM_STAGE};
+/// 
+/// // Request data from Kingston Mines and Peoria stations
 /// let url = build_iv_url(
-///     &["05568500", "05567500"],
-///     &["00060", "00065"],
+///     &["05568500", "05567500"],  // Site codes from STATION_REGISTRY
+///     &[PARAM_DISCHARGE, PARAM_STAGE],
 ///     "PT3H",
 /// );
 /// ```
 pub fn build_iv_url(sites: &[&str], param_codes: &[&str], period: &str) -> String {
-    // TODO: implement — join sites with commas, join param_codes with commas,
-    // append as query params along with format=json, siteStatus=active,
-    // and the period param.
-    let _ = (sites, param_codes, period);
-    unimplemented!("build_iv_url: construct query string from params")
+    let sites_param = sites.join(",");
+    let params_param = param_codes.join(",");
+    let format_param = "json";
+    let site_status = "active";
+    
+    format!(
+        "{}?sites={}&parameterCd={}&period={}&format={}&siteStatus={}",
+        IV_BASE_URL,
+        sites_param,
+        params_param,
+        period,
+        format_param,
+        site_status
+    )
+}
+
+/// Builds a USGS Daily Values (DV) API URL for the given site codes,
+/// parameter codes, and date range.
+///
+/// Unlike the IV API which uses ISO 8601 periods, the DV API uses
+/// explicit start and end dates in YYYY-MM-DD format.
+///
+/// # Example
+/// ```
+/// use crate::ingest::usgs::build_dv_url;
+/// use crate::stations::{PARAM_DISCHARGE, PARAM_STAGE};
+/// 
+/// // Request historical daily data
+/// let url = build_dv_url(
+///     &["05568500"],
+///     &[PARAM_DISCHARGE, PARAM_STAGE],
+///     "2020-01-01",
+///     "2020-12-31",
+/// );
+/// ```
+pub fn build_dv_url(
+    sites: &[&str],
+    param_codes: &[&str],
+    start_date: &str,
+    end_date: &str,
+) -> String {
+    let sites_param = sites.join(",");
+    let params_param = param_codes.join(",");
+    
+    format!(
+        "{}?sites={}&parameterCd={}&startDT={}&endDT={}&format=json",
+        DV_BASE_URL,
+        sites_param,
+        params_param,
+        start_date,
+        end_date
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -52,19 +174,206 @@ pub fn build_iv_url(sites: &[&str], param_codes: &[&str], period: &str) -> Strin
 /// - `NwisError::NoDataAvailable` — all `timeSeries` entries had either
 ///   an empty `value` array or the USGS sentinel value (`-999999`).
 pub fn parse_iv_response(json: &str) -> Result<Vec<GaugeReading>, NwisError> {
-    // TODO: implement with serde_json.
-    //
-    // Key parsing notes:
-    //   - Measurement values arrive as JSON *strings*, not numbers.
-    //     Parse with str::parse::<f64>().
-    //   - Check parsed value against noDataValue (-999999.0) and return
-    //     NwisError::NoDataAvailable if all series are missing.
-    //   - The qualifier is in values[0].value[N].qualifiers[0] — a string
-    //     like "P" or "A". Default to "P" if absent.
-    //   - Only use the most recent value (last entry in the value array,
-    //     or index 0 if the array has one entry — USGS sorts ascending).
-    let _ = json;
-    unimplemented!("parse_iv_response: deserialize WaterML JSON envelope")
+    // Parse the JSON into our serde structs
+    let response: IvResponse = serde_json::from_str(json)
+        .map_err(|e| NwisError::ParseError(format!("JSON deserialization failed: {}", e)))?;
+
+    // Check for empty timeSeries array
+    if response.value.time_series.is_empty() {
+        return Err(NwisError::NoDataAvailable(
+            "No timeSeries entries in response".to_string(),
+        ));
+    }
+
+    let mut readings = Vec::new();
+
+    // Process each timeSeries entry
+    for series in response.value.time_series {
+        // Extract metadata
+        let site_code = series
+            .source_info
+            .site_code
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing siteCode".to_string()))?
+            .value
+            .clone();
+
+        let site_name = series.source_info.site_name.clone();
+
+        let parameter_code = series
+            .variable
+            .variable_code
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing variableCode".to_string()))?
+            .value
+            .clone();
+
+        let unit = series.variable.unit.unit_code.clone();
+        let no_data_value = series.variable.no_data_value;
+
+        // Get the values array
+        let values_wrapper = series
+            .values
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing values array".to_string()))?;
+
+        // Check for empty value array
+        if values_wrapper.value.is_empty() {
+            continue; // Skip this series, try others
+        }
+
+        // Get the most recent value (last entry in chronologically sorted array)
+        let latest = values_wrapper
+            .value
+            .last()
+            .ok_or_else(|| NwisError::ParseError("Empty value array".to_string()))?;
+
+        // Parse the value string to f64
+        let value: f64 = latest
+            .value
+            .parse()
+            .map_err(|e| NwisError::ParseError(format!("Failed to parse value '{}': {}", latest.value, e)))?;
+
+        // Check for sentinel value
+        if (value - no_data_value).abs() < 0.1 {
+            continue; // Skip this series, try others
+        }
+
+        // Get qualifier, defaulting to "P" if not present
+        let qualifier = latest
+            .qualifiers
+            .first()
+            .map(|s| s.as_str())
+            .unwrap_or("P")
+            .to_string();
+
+        // Create the GaugeReading
+        readings.push(GaugeReading {
+            site_code,
+            site_name,
+            parameter_code,
+            unit,
+            value,
+            datetime: latest.date_time.clone(),
+            qualifier,
+        });
+    }
+
+    // If we didn't collect any valid readings, return NoDataAvailable
+    if readings.is_empty() {
+        return Err(NwisError::NoDataAvailable(
+            "All timeSeries entries were empty or contained sentinel values".to_string(),
+        ));
+    }
+
+    Ok(readings)
+}
+
+/// Parses a USGS Daily Values (DV) API JSON response into a flat list
+/// of `GaugeReading`s, returning ALL daily values in the time range.
+///
+/// Unlike `parse_iv_response` which returns only the most recent value
+/// per timeSeries, this returns one reading per day for historical analysis.
+///
+/// # Errors
+/// - `NwisError::ParseError` — malformed or unexpected JSON structure.
+/// - `NwisError::NoDataAvailable` — all `timeSeries` entries had either
+///   an empty `value` array or only USGS sentinel values (`-999999`).
+pub fn parse_dv_response(json: &str) -> Result<Vec<GaugeReading>, NwisError> {
+    // Parse the JSON into our serde structs (same format as IV)
+    let response: IvResponse = serde_json::from_str(json)
+        .map_err(|e| NwisError::ParseError(format!("JSON deserialization failed: {}", e)))?;
+
+    // Check for empty timeSeries array
+    if response.value.time_series.is_empty() {
+        return Err(NwisError::NoDataAvailable(
+            "No timeSeries entries in response".to_string(),
+        ));
+    }
+
+    let mut all_readings = Vec::new();
+
+    // Process each timeSeries entry
+    for series in response.value.time_series {
+        // Extract metadata
+        let site_code = series
+            .source_info
+            .site_code
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing siteCode".to_string()))?
+            .value
+            .clone();
+
+        let site_name = series.source_info.site_name.clone();
+
+        let parameter_code = series
+            .variable
+            .variable_code
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing variableCode".to_string()))?
+            .value
+            .clone();
+
+        let unit = series.variable.unit.unit_code.clone();
+        let no_data_value = series.variable.no_data_value;
+
+        // Get the values array
+        let values_wrapper = series
+            .values
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing values array".to_string()))?;
+
+        // Check for empty value array
+        if values_wrapper.value.is_empty() {
+            continue; // Skip this series, try others
+        }
+
+        // Process ALL values (not just the most recent like IV does)
+        for entry in &values_wrapper.value {
+            // Parse the value string to f64
+            let value: f64 = match entry.value.parse() {
+                Ok(v) => v,
+                Err(e) => {
+                    // Log but don't fail - skip bad values
+                    eprintln!("Warning: Failed to parse value '{}': {}", entry.value, e);
+                    continue;
+                }
+            };
+
+            // Skip sentinel values
+            if (value - no_data_value).abs() < 0.1 {
+                continue;
+            }
+
+            // Get qualifier, defaulting to "P" if not present
+            let qualifier = entry
+                .qualifiers
+                .first()
+                .map(|s| s.as_str())
+                .unwrap_or("P")
+                .to_string();
+
+            // Create a GaugeReading for each daily value
+            all_readings.push(GaugeReading {
+                site_code: site_code.clone(),
+                site_name: site_name.clone(),
+                parameter_code: parameter_code.clone(),
+                unit: unit.clone(),
+                value,
+                datetime: entry.date_time.clone(),
+                qualifier: qualifier.clone(),
+            });
+        }
+    }
+
+    // If we didn't collect any valid readings, return NoDataAvailable
+    if all_readings.is_empty() {
+        return Err(NwisError::NoDataAvailable(
+            "All timeSeries entries were empty or contained sentinel values".to_string(),
+        ));
+    }
+
+    Ok(all_readings)
 }
 
 // ---------------------------------------------------------------------------
@@ -81,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_build_url_targets_iv_endpoint_with_json_format() {
-        let url = build_iv_url(&["05568500"], &["00060", "00065"], "PT3H");
+        let url = build_iv_url(&["05568500"], &[PARAM_DISCHARGE, PARAM_STAGE], "PT3H");
         assert!(
             url.contains("waterservices.usgs.gov/nwis/iv/"),
             "must target the IV endpoint, got: {}",
@@ -92,10 +401,10 @@ mod tests {
 
     #[test]
     fn test_build_url_includes_all_params() {
-        let url = build_iv_url(&["05568500"], &["00060", "00065"], "PT3H");
+        let url = build_iv_url(&["05568500"], &[PARAM_DISCHARGE, PARAM_STAGE], "PT3H");
         assert!(url.contains("05568500"), "must include site code");
-        assert!(url.contains("00060"), "must include discharge param");
-        assert!(url.contains("00065"), "must include stage param");
+        assert!(url.contains(PARAM_DISCHARGE), "must include discharge param");
+        assert!(url.contains(PARAM_STAGE), "must include stage param");
         assert!(url.contains("PT3H"), "must include ISO 8601 period");
         assert!(url.contains("siteStatus=active"), "should filter to active sites");
     }
@@ -111,13 +420,57 @@ mod tests {
 
     #[test]
     fn test_build_url_uses_comma_separated_sites() {
-        let url = build_iv_url(&["05568500", "05567500"], &["00060"], "PT1H");
+        let url = build_iv_url(&["05568500", "05567500"], &[PARAM_DISCHARGE], "PT1H");
         // USGS expects a single comma-separated `sites` param, not repeated params.
         assert!(
             url.contains("05568500,05567500") || url.contains("sites=05568500&sites=05567500"),
             "sites should be comma-separated, got: {}",
             url
         );
+    }
+
+    // --- DV URL construction ------------------------------------------------
+
+    #[test]
+    fn test_build_dv_url_targets_dv_endpoint() {
+        let url = build_dv_url(
+            &["05568500"],
+            &[PARAM_DISCHARGE, PARAM_STAGE],
+            "2020-01-01",
+            "2020-12-31",
+        );
+        assert!(
+            url.contains("waterservices.usgs.gov/nwis/dv/"),
+            "must target the DV endpoint, got: {}",
+            url
+        );
+        assert!(url.contains("format=json"), "must request JSON format");
+    }
+
+    #[test]
+    fn test_build_dv_url_includes_date_range() {
+        let url = build_dv_url(
+            &["05568500"],
+            &[PARAM_DISCHARGE],
+            "2020-06-01",
+            "2020-06-30",
+        );
+        assert!(url.contains("startDT=2020-06-01"), "must include start date");
+        assert!(url.contains("endDT=2020-06-30"), "must include end date");
+        assert!(url.contains("05568500"), "must include site code");
+        assert!(url.contains(PARAM_DISCHARGE), "must include parameter code");
+    }
+
+    #[test]
+    fn test_build_dv_url_historical_range() {
+        let url = build_dv_url(
+            &["05568500"],
+            &[PARAM_DISCHARGE, PARAM_STAGE],
+            "1939-10-01",
+            "1940-09-30",
+        );
+        assert!(url.contains("1939-10-01"), "must support earliest data year");
+        assert!(url.contains("1940-09-30"), "must support full year range");
     }
 
     // --- Parsing: happy path ------------------------------------------------
