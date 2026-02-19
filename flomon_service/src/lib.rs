@@ -9,6 +9,7 @@
 /// ├── ingest
 /// │   ├── usgs    — USGS NWIS IV API: URL construction + JSON parsing
 /// │   └── fixtures (test only) — representative API response payloads
+/// ├── monitor     — real-time staleness tracking (hybrid DB + in-memory)
 /// ├── alert
 /// │   ├── thresholds — flood stage severity evaluation
 /// │   └── staleness  — gauge reading freshness checking
@@ -20,4 +21,5 @@ pub mod alert;
 pub mod analysis;
 pub mod ingest;
 pub mod model;
+pub mod monitor;
 pub mod stations;

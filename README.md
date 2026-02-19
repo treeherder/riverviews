@@ -289,6 +289,62 @@ Lead times are approximate and vary with flow velocity, precipitation patterns, 
 
 ---
 
+## Architecture
+
+### Staleness Detection & Monitoring State
+
+**Problem:** The service polls USGS API every 15 minutes. We need to:
+- Track when we last polled each station
+- Detect when readings become stale (no fresh data)
+- Maintain fresh data visibility without constant database queries
+- Survive service restarts without losing state
+
+**Solution: Hybrid Database + In-Memory Cache**
+
+#### Database (Source of Truth)
+- **`monitoring_state` table**: Tracks polling metadata per station
+  - Last poll time (attempted/succeeded)
+  - Latest reading timestamp and value
+  - Station status (active/degraded/offline)
+  - Consecutive failure count
+  - Per-station staleness thresholds
+- **`station_health` view**: Dashboard-ready health status
+- **Survives restarts**: State persists across service crashes
+- **Auditable**: Track status changes over time
+
+#### In-Memory Cache (Performance)
+- **Fast staleness checks**: No DB query for every reading
+- **Refreshed on startup**: Load from `monitoring_state` table
+- **Updated each poll**: Sync after storing new readings
+- **Hot path optimization**: Alert checks use cache
+
+#### Data Flow
+```
+1. Poll USGS API (every 15 min)
+2. Store readings in gauge_readings table
+3. Update monitoring_state via SQL function
+4. Refresh in-memory cache from DB
+5. Check cache for stale/offline stations
+6. Send alerts if needed
+```
+
+**Why not disk state files?**
+- Duplicate state management (DB + JSON files)
+- Synchronization complexity
+- No query capability for analysis
+- Database already persistent and queryable
+
+**Why not pure in-memory?**
+- Lost on service restart
+- No historical status tracking
+- Can't analyze failure patterns
+
+See:
+- `sql/002_monitoring_metadata.sql` - Database schema
+- `src/monitor/mod.rs` - Hybrid implementation
+
+---
+
 ## Technology Stack
 
 - **Language:** Rust
