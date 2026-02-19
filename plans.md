@@ -44,9 +44,11 @@ The USGS typically places gauges just above or below each lock. The USGS NWIS si
 
 ## Project To-Do List
 
-### Infrastructure
-- [ ] Determine polling frequency and schedule
-- [ ] Prepare database (PostgreSQL?)
+### Infrastructure tasks for USGS gauges service
+- [X] Determine polling frequency and schedule
+- [X] Prepare database (PostgreSQL?)    
+    - [X] Create schema for historical data with instantaneous value integration
+    - [X] Monitor and update staleness to know availability/frequency of IV data updates
 - [ ] Set up VPS for hosting
 - [ ] Determine alert infrastructure
 - [ ] Design dashboard interface
