@@ -301,20 +301,49 @@ Lead times are approximate and vary with flow velocity, precipitation patterns, 
 
 ## Development Status
 
-**Current Phase:** Historical data warehouse with dual-source ingestion
+**Current Phase:** Historical data warehouse with station resilience
 
-- [x] Station registry and metadata
-- [x] USGS IV API URL construction and parsing
-- [x] USGS DV API URL construction and parsing
-- [x] Historical data ingestion binary (DV + IV dual-tier)
-- [x] Database schema and PostgreSQL setup
-- [ ] Real-time monitoring service
-- [ ] Data grouping by site
-- [ ] Flood threshold checking
-- [ ] Staleness detection
-- [ ] Alert dispatch system
-- [ ] Real-time monitoring service
-- [ ] Web dashboard
+### Completed ✓
+
+- [x] **Station registry and metadata** — 8 USGS gauge stations with parameter tracking
+- [x] **USGS IV API client** — Instantaneous Values (15-min, 120-day window)
+- [x] **USGS DV API client** — Daily Values (1939-present, 87 years)
+- [x] **Historical data ingestion** — Dual-tier DV+IV backfill with resumable state
+- [x] **PostgreSQL database** — Multi-schema design with UNIQUE constraints
+- [x] **Station resilience** — Graceful degradation, parameter validation, offline handling
+- [x] **Integration tests** — Live API verification (manual execution)
+
+### Station Health Status (Verified Feb 19, 2026)
+
+**Operational Stations (6/8):**
+- ✅ Illinois River at Kingston Mines, IL (05568500) — discharge + stage
+- ✅ Illinois River at Peoria, IL (05567500) — discharge + stage  
+- ✅ Illinois River at Chillicothe, IL (05568000) — discharge + stage
+- ✅ Spoon River at Seville, IL (05570000) — discharge + stage
+- ✅ Illinois River at Marseilles, IL (05552500) — discharge + stage
+- ✅ Chicago Sanitary & Ship Canal at Romeoville, IL (05536890) — discharge + stage
+
+**Offline/Decommissioned Stations (2/8):**
+- ❌ Illinois River at Henry, IL (05557000) — no data available from API
+- ❌ Mackinaw River near Green Valley, IL (05568580) — no data available from API
+
+**System Resilience:**
+The service continues operating with 6 active stations. Parse functions skip empty entries, database operations use `ON CONFLICT DO NOTHING` to handle missing data gracefully. See `docs/STATION_RESILIENCE.md` for operational procedures.
+
+**Verification Command:**
+```bash
+cargo test station_api_verify_all_registry_stations -- --ignored --nocapture
+```
+
+### In Progress / Planned
+
+- [ ] **Real-time monitoring service** — Continuous polling and alerting (main.rs)
+- [ ] **Data grouping by site** — Multi-site analysis and comparison (9 tests failing)
+- [ ] **Flood threshold checking** — NWS action/flood stage alerts (2 tests failing)
+- [ ] **Staleness detection** — Identify offline stations and data gaps (9 tests failing)
+- [ ] **Alert dispatch system** — Notifications for flood conditions
+- [ ] **Web dashboard** — Real-time visualization and historical charts
+- [ ] **Station health monitoring** — Automated detection and recovery from outages
 
 ---
 

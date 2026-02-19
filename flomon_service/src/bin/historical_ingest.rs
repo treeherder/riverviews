@@ -224,7 +224,7 @@ fn store_readings(
     
     // Show which sites we got data from (helps identify offline stations)
     if sites_seen.len() < all_site_codes().len() {
-        let mut site_list: Vec<_> = sites_seen.iter().cloned().collect();
+        let mut site_list: Vec<_> = sites_seen.iter().map(|s| s.as_str()).collect();
         site_list.sort();
         println!("   📍 Active sites: {}", site_list.join(", "));
     }
