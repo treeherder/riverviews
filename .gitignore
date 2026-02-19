@@ -1,0 +1,24 @@
+# Rust build artifacts
+/flomon_service/target/
+
+# Rust debug and release builds
+debug/
+release/
+
+# Cargo lock file (uncomment if this is a library)
+# Cargo.lock
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
