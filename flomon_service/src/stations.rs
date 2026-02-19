@@ -35,6 +35,9 @@ pub struct Station {
     /// NWS flood stage thresholds, if defined for this station.
     /// Tributary stations may not have official NWS thresholds.
     pub thresholds: Option<FloodThresholds>,
+    /// Which parameters this station is expected to provide.
+    /// Some stations may only report discharge (00060) or stage (00065).
+    pub expected_parameters: &'static [&'static str],
 }
 
 /// All USGS gauge stations monitored for Peoria flood risk, ordered
@@ -57,6 +60,7 @@ pub static STATION_REGISTRY: &[Station] = &[
             moderate_flood_stage_ft: 20.0,
             major_flood_stage_ft: 24.0,
         }),
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05567500",
@@ -67,6 +71,7 @@ pub static STATION_REGISTRY: &[Station] = &[
         latitude: 40.6939,
         longitude: -89.5898,
         thresholds: None, // pool gauge — NWS thresholds not defined here
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05568000",
@@ -81,6 +86,7 @@ pub static STATION_REGISTRY: &[Station] = &[
             moderate_flood_stage_ft: 19.0,
             major_flood_stage_ft: 23.0,
         }),
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05557000",
@@ -95,6 +101,7 @@ pub static STATION_REGISTRY: &[Station] = &[
             moderate_flood_stage_ft: 19.0,
             major_flood_stage_ft: 22.0,
         }),
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05568580",
@@ -105,6 +112,7 @@ pub static STATION_REGISTRY: &[Station] = &[
         latitude: 40.7050,
         longitude: -89.6480,
         thresholds: None,
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05570000",
@@ -115,6 +123,7 @@ pub static STATION_REGISTRY: &[Station] = &[
         latitude: 40.4906,
         longitude: -90.0381,
         thresholds: None,
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05552500",
@@ -130,6 +139,7 @@ pub static STATION_REGISTRY: &[Station] = &[
             moderate_flood_stage_ft: 18.0,
             major_flood_stage_ft: 22.0,
         }),
+        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
     },
     Station {
         site_code: "05536890",
@@ -140,6 +150,7 @@ pub static STATION_REGISTRY: &[Station] = &[
         latitude: 41.6367,
         longitude: -88.0920,
         thresholds: None,
+        expected_parameters: &[PARAM_DISCHARGE], // Canal flow monitoring - stage not meaningful
     },
 ];
 
@@ -147,6 +158,23 @@ pub static STATION_REGISTRY: &[Station] = &[
 /// suitable for passing directly to `ingest::usgs::build_iv_url`.
 pub fn all_site_codes() -> Vec<&'static str> {
     STATION_REGISTRY.iter().map(|s| s.site_code).collect()
+}
+
+/// Returns site codes that expect a specific parameter.
+/// Useful for filtering stations before API requests.
+pub fn sites_with_parameter(param_code: &str) -> Vec<&'static str> {
+    STATION_REGISTRY
+        .iter()
+        .filter(|s| s.expected_parameters.contains(&param_code))
+        .map(|s| s.site_code)
+        .collect()
+}
+
+/// Checks if a station is expected to provide a specific parameter.
+pub fn station_has_parameter(site_code: &str, param_code: &str) -> bool {
+    find_station(site_code)
+        .map(|s| s.expected_parameters.contains(&param_code))
+        .unwrap_or(false)
 }
 
 /// Looks up a station by site code. Returns `None` if not found.
@@ -267,5 +295,204 @@ mod tests {
         assert!(PARAM_DISCHARGE.chars().all(|c| c.is_ascii_digit()));
         assert!(PARAM_STAGE.chars().all(|c| c.is_ascii_digit()));
         assert_ne!(PARAM_DISCHARGE, PARAM_STAGE);
+    }
+
+    #[test]
+    fn test_all_stations_have_at_least_one_expected_parameter() {
+        for station in STATION_REGISTRY {
+            assert!(
+                !station.expected_parameters.is_empty(),
+                "station '{}' must have at least one expected parameter",
+                station.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_sites_with_parameter_filters_correctly() {
+        let discharge_sites = sites_with_parameter(PARAM_DISCHARGE);
+        let stage_sites = sites_with_parameter(PARAM_STAGE);
+        
+        // All sites should have discharge
+        assert_eq!(discharge_sites.len(), 8);
+        
+        // Chicago Canal likely doesn't have stage
+        assert!(stage_sites.len() >= 7);
+        
+        // Kingston Mines should have both
+        assert!(discharge_sites.contains(&"05568500"));
+        assert!(stage_sites.contains(&"05568500"));
+    }
+
+    #[test]
+    fn test_station_has_parameter_helper() {
+        assert!(station_has_parameter("05568500", PARAM_DISCHARGE));
+        assert!(station_has_parameter("05568500", PARAM_STAGE));
+        assert!(!station_has_parameter("00000000", PARAM_DISCHARGE)); // non-existent station
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Integration Tests - Station API Verification
+// ---------------------------------------------------------------------------
+// 
+// These tests verify that stations in the registry actually exist and return
+// the expected parameters from the live USGS API. They are marked #[ignore]
+// so they don't run during normal CI builds (which shouldn't depend on external
+// API availability).
+//
+// To run these tests manually:
+//   cargo test -- --ignored station_api
+//
+// These tests serve multiple purposes:
+// 1. Verify station codes are correct and stations are active
+// 2. Confirm expected parameters are actually available
+// 3. Detect when USGS decommissions or reconfigures a station
+// 4. Provide early warning of API changes
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+
+    /// Helper to make a real API request and check if a station returns data.
+    /// Returns (site_exists, has_discharge, has_stage, error_message).
+    #[allow(dead_code)]
+    fn verify_station_api(site_code: &str) -> (bool, bool, bool, Option<String>) {
+        use crate::ingest::usgs::{build_iv_url, parse_iv_response};
+        
+        // Request last hour of data for both parameters
+        let url = build_iv_url(&[site_code], &[PARAM_DISCHARGE, PARAM_STAGE], "PT1H");
+        
+        let response = match reqwest::blocking::get(&url) {
+            Ok(resp) => match resp.error_for_status() {
+                Ok(r) => match r.text() {
+                    Ok(text) => text,
+                    Err(e) => return (false, false, false, Some(format!("Failed to read response: {}", e))),
+                },
+                Err(e) => return (false, false, false, Some(format!("HTTP error: {}", e))),
+            },
+            Err(e) => return (false, false, false, Some(format!("Request failed: {}", e))),
+        };
+        
+        let readings = match parse_iv_response(&response) {
+            Ok(r) => r,
+            Err(e) => return (false, false, false, Some(format!("Parse error: {:?}", e))),
+        };
+        
+        // Check if we got readings for this site
+        let site_readings: Vec<_> = readings.iter().filter(|r| r.site_code == site_code).collect();
+        
+        if site_readings.is_empty() {
+            return (false, false, false, Some("No readings returned for this site".to_string()));
+        }
+        
+        let has_discharge = site_readings.iter().any(|r| r.parameter_code == PARAM_DISCHARGE);
+        let has_stage = site_readings.iter().any(|r| r.parameter_code == PARAM_STAGE);
+        
+        (true, has_discharge, has_stage, None)
+    }
+
+    #[test]
+    #[ignore] // Don't run in CI - depends on external API
+    fn station_api_kingston_mines_returns_expected_data() {
+        let (exists, has_discharge, has_stage, error) = verify_station_api("05568500");
+        
+        if let Some(err) = error {
+            panic!("Station 05568500 (Kingston Mines) API check failed: {}", err);
+        }
+        
+        assert!(exists, "Kingston Mines station should exist");
+        assert!(has_discharge, "Kingston Mines should provide discharge (00060)");
+        assert!(has_stage, "Kingston Mines should provide stage (00065)");
+    }
+
+    #[test]
+    #[ignore] // Don't run in CI - depends on external API
+    fn station_api_peoria_pool_returns_expected_data() {
+        let (exists, has_discharge, has_stage, error) = verify_station_api("05567500");
+        
+        if let Some(err) = error {
+            panic!("Station 05567500 (Peoria) API check failed: {}", err);
+        }
+        
+        assert!(exists, "Peoria pool station should exist");
+        assert!(has_discharge, "Peoria should provide discharge (00060)");
+        assert!(has_stage, "Peoria should provide stage (00065)");
+    }
+
+    #[test]
+    #[ignore] // Don't run in CI - depends on external API
+    fn station_api_verify_all_registry_stations() {
+        // This test verifies ALL stations in the registry
+        let mut failures = Vec::new();
+        let mut warnings = Vec::new();
+        
+        for station in STATION_REGISTRY {
+            println!("\n🔍 Checking {} ({})...", station.name, station.site_code);
+            
+            let (exists, has_discharge, has_stage, error) = verify_station_api(station.site_code);
+            
+            if let Some(err) = error {
+                failures.push(format!("{} ({}): {}", station.name, station.site_code, err));
+                continue;
+            }
+            
+            if !exists {
+                failures.push(format!("{} ({}): Station does not exist or is offline", station.name, station.site_code));
+                continue;
+            }
+            
+            // Verify expected parameters match reality
+            let expects_discharge = station.expected_parameters.contains(&PARAM_DISCHARGE);
+            let expects_stage = station.expected_parameters.contains(&PARAM_STAGE);
+            
+            if expects_discharge && !has_discharge {
+                warnings.push(format!("{} ({}): Expected discharge but not available", station.name, station.site_code));
+            }
+            
+            if expects_stage && !has_stage {
+                warnings.push(format!("{} ({}): Expected stage but not available", station.name, station.site_code));
+            }
+            
+            if !expects_discharge && has_discharge {
+                warnings.push(format!("{} ({}): Discharge available but not in expected_parameters", station.name, station.site_code));
+            }
+            
+            if !expects_stage && has_stage {
+                warnings.push(format!("{} ({}): Stage available but not in expected_parameters", station.name, station.site_code));
+            }
+            
+            println!("   ✓ exists={}, discharge={}, stage={}", exists, has_discharge, has_stage);
+        }
+        
+        // Print summary
+        if !warnings.is_empty() {
+            println!("\n⚠️  WARNINGS ({}):", warnings.len());
+            for warning in &warnings {
+                println!("   - {}", warning);
+            }
+        }
+        
+        if !failures.is_empty() {
+            println!("\n❌ FAILURES ({}):", failures.len());
+            for failure in &failures {
+                println!("   - {}", failure);
+            }
+            panic!("Station API verification failed for {} station(s)", failures.len());
+        }
+        
+        if warnings.is_empty() {
+            println!("\n✅ All {} stations verified successfully!", STATION_REGISTRY.len());
+        } else {
+            println!("\n⚠️  {} stations verified with {} warnings", STATION_REGISTRY.len(), warnings.len());
+        }
+    }
+
+    #[test]
+    #[ignore] // Don't run in CI - depends on external API
+    fn station_api_invalid_site_returns_no_data() {
+        // Verify that a made-up station code returns no data
+        let (exists, _, _, _) = verify_station_api("99999999");
+        assert!(!exists, "Fake station should not return data");
     }
 }

@@ -173,16 +173,25 @@ fn fetch_iv_period(
 ///
 /// Unlike real-time monitoring (which updates current values), this
 /// stores all timestamped readings for historical analysis.
+///
+/// Returns statistics about which sites were successfully stored.
 fn store_readings(
     client: &mut Client,
     readings: &[GaugeReading],
 ) -> Result<(), Box<dyn std::error::Error>> {
     if readings.is_empty() {
-        println!("   ℹ️  No readings to store");
+        println!("   ℹ️  No readings to store (all stations may be offline)");
         return Ok(());
     }
     
-    println!("💾 Storing {} readings to database...", readings.len());
+    // Collect site statistics for visibility
+    let mut sites_seen = std::collections::HashSet::new();
+    for reading in readings {
+        sites_seen.insert(&reading.site_code);
+    }
+    
+    println!("💾 Storing {} readings from {} stations...", 
+             readings.len(), sites_seen.len());
     
     let mut transaction = client.transaction()?;
     
@@ -212,6 +221,13 @@ fn store_readings(
     
     println!("   ✓ Inserted {} new readings ({} duplicates skipped)",
              inserted, readings.len() - inserted as usize);
+    
+    // Show which sites we got data from (helps identify offline stations)
+    if sites_seen.len() < all_site_codes().len() {
+        let mut site_list: Vec<_> = sites_seen.iter().cloned().collect();
+        site_list.sort();
+        println!("   📍 Active sites: {}", site_list.join(", "));
+    }
     
     Ok(())
 }
