@@ -1,0 +1,219 @@
+# FloPro Station Registry Configuration
+# Comprehensive metadata for all monitored USGS gauge stations
+#
+# Last Updated: February 19, 2026
+# Sources:
+#   - Site codes & coordinates: USGS NWIS (waterservices.usgs.gov)
+#   - Flood thresholds: NWS Advanced Hydrologic Prediction Service (water.weather.gov/ahps)
+#   - Travel times: Estimated from historical flood timing analysis
+#   - Distances: Google Maps river distance measurements
+
+# =============================================================================
+# REFERENCE STATION (Peoria Area - Downstream)
+# =============================================================================
+
+[[station]]
+site_code = "05568500"
+name = "Illinois River at Kingston Mines, IL"
+description = "Primary downstream reference gauge just below Peoria. Use for current flood status at the property."
+
+# Location
+latitude = 40.5614
+longitude = -89.9956
+
+# Positioning relative to Peoria
+distance_from_peoria_miles = 10.0
+distance_direction = "downstream"
+travel_time_to_peoria_hours = 0.0  # Reference point - this IS Peoria for monitoring purposes
+
+# NWS Flood Stage Thresholds (feet above gauge datum)
+# Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=ilx&gage=kini2
+[station.thresholds]
+action_stage_ft = 14.0       # Minor flooding begins - preparation stage
+flood_stage_ft = 16.0         # Flood stage - agricultural land, low roads
+moderate_flood_stage_ft = 20.0  # Moderate flooding - structures threatened
+major_flood_stage_ft = 24.0     # Major flooding - widespread severe inundation
+description = "NWS official thresholds for Kingston Mines. This is the primary flood reference for Peoria area properties."
+
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]  # discharge + stage
+
+# =============================================================================
+# PEORIA POOL GAUGE (Not used for flood monitoring)
+# =============================================================================
+
+[[station]]
+site_code = "05567500"
+name = "Illinois River at Peoria, IL"
+description = "Pool gauge at Peoria Lock & Dam. Reflects managed pool level rather than free-flowing stage; use Kingston Mines for flood stage comparisons."
+
+latitude = 40.6939
+longitude = -89.5898
+
+distance_from_peoria_miles = 0.0
+distance_direction = "at"
+travel_time_to_peoria_hours = 0.0
+
+# No NWS flood thresholds - this is a managed pool gauge
+# [station.thresholds] - intentionally omitted
+
+expected_parameters = ["00060", "00065"]
+
+# =============================================================================
+# UPSTREAM WARNING STATIONS (Main Stem Illinois River)
+# =============================================================================
+
+[[station]]
+site_code = "05568000"
+name = "Illinois River at Chillicothe, IL"
+description = "Upstream warning station ~20 miles north of Peoria. Rising stage here typically leads Peoria by 6–12 hours."
+
+latitude = 40.9200
+longitude = -89.4854
+
+distance_from_peoria_miles = 20.0
+distance_direction = "upstream"
+travel_time_to_peoria_hours = 9.0  # Average 6-12 hours, use midpoint
+
+# Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=ilx&gage=chti2
+[station.thresholds]
+action_stage_ft = 13.0
+flood_stage_ft = 15.0
+moderate_flood_stage_ft = 19.0
+major_flood_stage_ft = 23.0
+description = "Earliest local warning station. Flood stage here precedes Peoria flooding by 6-12 hours."
+
+expected_parameters = ["00060", "00065"]
+
+[[station]]
+site_code = "05557000"
+name = "Illinois River at Henry, IL"
+description = "Early warning station ~50 miles upstream. Stage here leads Peoria by 12–24 hours under typical flow."
+
+latitude = 41.1120
+longitude = -89.3540
+
+distance_from_peoria_miles = 50.0
+distance_direction = "upstream"
+travel_time_to_peoria_hours = 18.0  # Average 12-24 hours, use midpoint
+
+# Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=ilx&gage=heni2
+[station.thresholds]
+action_stage_ft = 13.0
+flood_stage_ft = 15.0
+moderate_flood_stage_ft = 19.0
+major_flood_stage_ft = 22.0
+description = "Mid-range early warning. Provides 12-24 hour advance notice of Peoria flooding."
+
+expected_parameters = ["00060", "00065"]
+
+[[station]]
+site_code = "05552500"
+name = "Illinois River at Marseilles, IL"
+description = "Main stem gauge near Starved Rock L&D, ~80 miles upstream. Provides earliest main-stem warning; stage here leads Peoria by roughly 24–48 hours."
+
+latitude = 41.3303
+longitude = -88.7431
+
+distance_from_peoria_miles = 80.0
+distance_direction = "upstream"
+travel_time_to_peoria_hours = 36.0  # Average 24-48 hours, use midpoint
+
+# Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=lot&gage=mrsi2
+[station.thresholds]
+action_stage_ft = 12.0
+flood_stage_ft = 14.0
+moderate_flood_stage_ft = 18.0
+major_flood_stage_ft = 22.0
+description = "Earliest main-stem warning station. Flood stage here provides 24-48 hours advance notice."
+
+expected_parameters = ["00060", "00065"]
+
+# =============================================================================
+# TRIBUTARY STATIONS (Flash Flood Indicators)
+# =============================================================================
+
+[[station]]
+site_code = "05568580"
+name = "Mackinaw River near Green Valley, IL"
+description = "Critical local tributary joining the Illinois near Pekin, just south of Peoria. Responds quickly to rainfall; a rising Mackinaw is a strong short-term flood precursor."
+
+latitude = 40.7050
+longitude = -89.6480
+
+distance_from_peoria_miles = 8.0
+distance_direction = "tributary_south"
+travel_time_to_peoria_hours = 3.0  # Fast response - joins near Peoria
+
+# No official NWS flood thresholds for this tributary
+# Monitor for rapid discharge increases rather than absolute stage
+# [station.thresholds] - intentionally omitted
+
+expected_parameters = ["00060", "00065"]
+
+[[station]]
+site_code = "05570000"
+name = "Spoon River at Seville, IL"
+description = "Upstream tributary joining the Illinois above Havana. Less directly coupled to Peoria than the Mackinaw but contributes to overall basin load."
+
+latitude = 40.4906
+longitude = -90.0381
+
+distance_from_peoria_miles = 35.0
+distance_direction = "tributary_southwest"
+travel_time_to_peoria_hours = 12.0  # Indirect impact via confluence downstream
+
+# No official NWS flood thresholds
+# [station.thresholds] - intentionally omitted
+
+expected_parameters = ["00060", "00065"]
+
+# =============================================================================
+# CHICAGO METRO CONTRIBUTION
+# =============================================================================
+
+[[station]]
+site_code = "05536890"
+name = "Chicago Sanitary & Ship Canal at Romeoville, IL"
+description = "Monitors flow from the Chicago metro area entering the Illinois River system. Tracks MWRD releases during heavy rain events, which can spike main-stem flows significantly."
+
+latitude = 41.6367
+longitude = -88.0920
+
+distance_from_peoria_miles = 120.0
+distance_direction = "upstream_northeast"
+travel_time_to_peoria_hours = 48.0  # Very slow canal flow, combines with main stem at Marseilles area
+
+# No flood stage thresholds - monitor absolute discharge levels
+# High flow from Chicago (>10,000 cfs) indicates metro-area flood releases
+# [station.thresholds] - intentionally omitted
+
+expected_parameters = ["00060", "00065"]
+
+# =============================================================================
+# PARAMETER CODE DEFINITIONS
+# =============================================================================
+# 00060 = Discharge (streamflow) in cubic feet per second (ft³/s)
+# 00065 = Gage height (stage) in feet (ft)
+#
+# All stations in this registry monitor both parameters for:
+#   - Stage: Direct flood impact (feet of water)
+#   - Discharge: Flow volume (useful when stage sensor fails)
+# =============================================================================
+
+# =============================================================================
+# TRAVEL TIME METHODOLOGY
+# =============================================================================
+# Travel times estimated from:
+#   1. NWS flood crest timing analysis (2013, 2019 events)
+#   2. USGS stream velocity measurements during high flow
+#   3. River distance / typical flood wave velocity (3-5 mph)
+#
+# Notes:
+#   - Times are AVERAGES - actual flood wave travel varies with:
+#     * Discharge volume (higher flow = faster travel)
+#     * Channel conditions (ice, vegetation, debris)
+#     * Lock/dam operations (pools slow propagation)
+#   - Use times as ESTIMATES for alert timing, not guarantees
+#   - Tributary times indicate confluence-to-Peoria lag
+# =============================================================================

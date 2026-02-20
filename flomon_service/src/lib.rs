@@ -5,6 +5,7 @@
 /// ```
 /// flomon_service
 /// ├── model       — shared data types (GaugeReading, FloodThresholds, NwisError, …)
+/// ├── config      — station registry configuration loader (stations.toml)
 /// ├── stations    — USGS site code registry with NWS flood stage thresholds
 /// ├── ingest
 /// │   ├── usgs    — USGS NWIS IV API: URL construction + JSON parsing
@@ -19,6 +20,7 @@
 
 pub mod alert;
 pub mod analysis;
+pub mod config;
 pub mod ingest;
 pub mod model;
 pub mod monitor;
