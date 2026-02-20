@@ -1,19 +1,20 @@
-# Peoria Flood Monitoring Service (FloPro)
+# FloPro - Flood Monitoring Service
 
-A real-time flood monitoring and early warning system for the Peoria, IL region on the Illinois River.
+**Status:** Early development - infrastructure and testing framework in place
 
-## Overview
+## Vision
 
-FloPro monitors USGS river gauge stations throughout the Illinois River basin to provide early flood warnings for the Peoria area. The service tracks water levels and discharge rates at key upstream monitoring points, detecting flood conditions and providing lead time for flood mitigation and evacuation planning.
+FloPro is a generalized flood monitoring system designed to work with any river or waterway. The software ingests data from multiple sources (USGS gauges, NOAA weather, NWS forecasts, soil moisture, dam operations), builds predictive models from historical patterns, and provides early warning alerts for downstream communities.
 
-### Key Features
+**Key Goals:**
+- **Waterway-agnostic**: Configure for any river system via TOML configuration
+- **Multi-source intelligence**: Combine gauge data, weather forecasts, soil saturation, and dam operations
+- **Historical learning**: Build flood prediction models from decades of archived data
+- **Upstream lead time**: Detect flood conditions hours or days before they arrive downstream
+- **Open architecture**: Extensible database schema for new data sources
 
-- **Real-time monitoring** of USGS gauge stations
-- **Multi-site tracking** across the Illinois Waterway
-- **Flood stage alerts** based on NWS thresholds
-- **Early warning system** with 24-48 hour lead time from upstream stations
-- **Data validation** and staleness detection
-- **Historical data warehousing** for trend analysis
+**Reference Implementation:** Illinois River Basin (Peoria, IL) - 8 USGS monitoring stations with 87 years of historical data
+
 
 ## Project Structure
 
@@ -33,373 +34,369 @@ flomon_service/
 └── Cargo.toml
 ```
 
+## Current Status
+
+**What Works:**
+- ✅ **Configuration system** - TOML-based station metadata with flood thresholds, travel times, and distances
+- ✅ **USGS data clients** - API integration for both instantaneous (15-min) and daily values (1939-present)
+- ✅ **Historical ingestion** - Dual-tier backfill system with resumable state tracking
+- ✅ **PostgreSQL schema** - Multi-schema architecture (usgs_raw, nws, noaa, usace, soil) ready for extensibility
+- ✅ **Testing framework** - 21 unit tests passing, 17 TDD placeholders (expected failures), 4 integration tests
+- ✅ **Database migrations** - Schema for gauge readings, monitoring state, and flood thresholds
+
+**In Development:**
+- 🔄 **Staleness detection** - Identify offline stations and data gaps (function stubs in place, 9 tests waiting)
+- 🔄 **Data grouping** - Multi-site analysis and comparison (function stubs, 8 tests waiting)
+- 🔄 **Flood threshold checking** - Detect when readings exceed NWS action/flood stages (2 tests waiting)
+
+**Not Yet Started:**
+- ⏸️ Real-time monitoring daemon (main.rs)
+- ⏸️ Alert dispatch system
+- ⏸️ Web dashboard
+- ⏸️ Additional data source ingestion (NWS forecasts, NOAA precipitation, soil moisture, USACE operations)
+
+## Multi-Source Data Architecture
+
+FloPro is designed to integrate multiple data sources for comprehensive flood prediction:
+
+### Currently Implemented: USGS Stream Gauges
+
+**Source:** U.S. Geological Survey National Water Information System (NWIS)
+
+| API | Coverage | Resolution | Use Case |
+|-----|----------|------------|----------|
+| **Instantaneous Values (IV)** | Last 120 days | 15 minutes | Real-time monitoring, recent flood detail |
+| **Daily Values (DV)** | 1939-present | Daily means | Historical analysis, long-term trends, model training |
+
+**Measurements:**
+- Discharge (parameter 00060): Streamflow in cubic feet per second
+- Gage height (parameter 00065): River stage in feet
+
+**Status:** ✅ Fully implemented - API clients, database storage, historical backfill
+
+### Planned: NWS Forecasts & Alerts
+
+**Source:** National Weather Service Advanced Hydrologic Prediction Service (AHPS)
+
+**Data Types:**
+- Stage forecasts (predicted future river levels)
+- Flood warnings and watches (CAP alerts)
+- Official flood stage thresholds (action/minor/moderate/major)
+
+**Use Case:** Authoritative government alerts, predicted future conditions
+
+**Status:** 📋 Schema ready (nws.flood_warnings, nws.stage_forecasts), ingestion not implemented
+
+### Planned: NOAA Precipitation
+
+**Source:** NOAA Multi-Radar Multi-Sensor (MRMS) + National Digital Forecast Database (NDFD)
+
+**Data Types:**
+- Observed rainfall (radar-estimated, last 1/3/6/24/48 hours)
+- Precipitation forecasts (predicted rainfall, 1-7 day outlook)
+
+**Use Case:** Rainfall is the primary driver of river flooding - predict future discharge based on forecasted precipitation
+
+**Status:** 📋 Schema designed (noaa.observed_precipitation, noaa.precipitation_forecasts), not implemented
+
+### Planned: Soil Moisture
+
+**Source:** USDA NRCS SNOTEL + NOAA Climate Prediction Center
+
+**Data Types:**
+- Point observations from field stations (volumetric water content by depth)
+- Basin-averaged saturation index (composite metric 0-100)
+
+**Use Case:** Saturated ground amplifies runoff from rainfall - high soil moisture increases flood risk
+
+**Status:** 📋 Schema designed (soil.moisture_observations, soil.basin_saturation), not implemented
+
+### Planned: USACE Lock & Dam Operations
+
+**Source:** U.S. Army Corps of Engineers Lock Performance Monitoring System
+
+**Data Types:**
+- Current pool levels and release rates
+- Scheduled water releases (maintenance/flood control)
+- Operational status (normal, flood control mode, emergency)
+
+**Use Case:** Dam releases can cause sudden discharge spikes - scheduled releases provide advance warning
+
+**Status:** 📋 Schema designed (usace.lock_operations, usace.scheduled_releases), not implemented
+
 ---
 
-## Usage
+## Reference Implementation: Illinois River Basin
+
+**Geographic Focus:** Peoria, Illinois and Upper Peoria Lake
+
+**Why Illinois River?**
+- Developer's local area (stakeholder knowledge)
+- 87 years of USGS data available (1939-present)
+- Major tributary system (Mississippi River basin)
+- Managed waterway with locks/dams (USACE operations)
+- Documented flood history (1993, 2013, 2019)
+
+**Monitoring Stations:** 8 USGS gauges configured in `stations.toml`
+- Upstream early warning: Marseilles (80 mi, 36 hr), Chillicothe (10 mi, 9 hr)
+- Primary monitoring: Kingston Mines (pool gauge), Peoria (discharge)
+- Downstream verification: Havana (30 mi)
+- Tributaries: Spoon River, Mackinaw River
+- Water source: Chicago Sanitary & Ship Canal
+
+See [stations.toml](flomon_service/stations.toml) for complete configuration including flood thresholds, distances, and travel times.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Rust 1.70+ (Edition 2024)
+- PostgreSQL 14+
+- USGS NWIS API access (no key required, rate-limited)
+
+### Database Setup
+
+```bash
+# Create database
+createdb flomon
+
+# Apply migrations in order
+psql -d flomon -f flomon_service/sql/001_initial_schema.sql
+psql -d flomon -f flomon_service/sql/002_monitoring_metadata.sql
+psql -d flomon -f flomon_service/sql/003_flood_metadata.sql
+
+# Configure connection
+echo "DATABASE_URL=postgresql://localhost/flomon" > flomon_service/.env
+```
 
 ### Historical Data Ingestion
 
-The `historical_ingest` binary populates the database using a **two-tier ingestion strategy**:
+Load 87 years of USGS data (Illinois River reference implementation):
 
-**Tier 1: Daily Values (DV) - Long-term Historical Context**
-- Data source: USGS Daily Values API  
-- Coverage: October 1939 to ~125 days ago
-- Resolution: Daily mean discharge and stage
-- Use case: Multi-decade flood analysis, seasonal patterns, return intervals
-
-**Tier 2: Instantaneous Values (IV) - Recent High-Resolution**
-- Data source: USGS Instantaneous Values API
-- Coverage: Last 120 days
-- Resolution: 15-minute intervals (96 readings/day)
-- Use case: Operational monitoring, short-term trends, flood event detail
-
-This approach provides **87 years of daily historical data** combined with **high-resolution recent data**, enabling both long-term flood risk modeling and operational flood warning.
-
----
-
-**Initial Run** (populates full historical dataset):
 ```bash
 cd flomon_service
 cargo run --bin historical_ingest
 ```
 
-The binary will execute two phases:
-1. **Phase 1 (DV):** Fetch ~87 years of daily data (1939-2026), ~31,755 days per site
-2. **Phase 2 (IV):** Fetch 120 days of 15-minute data, ~11,520 readings per site
+**What this does:**
+- **Phase 1 (DV):** Fetch daily values from Oct 1939 to ~125 days ago (~31,755 days × 8 sites)
+- **Phase 2 (IV):** Fetch 15-minute values for last 120 days (~11,520 readings × 8 sites)
+- **Total:** ~692,400 gauge readings loaded in ~4-5 minutes
 
-**Subsequent Runs** (incremental updates):
+**Subsequent runs:** Incrementally update IV data only (DV historical data is static)
+
+State tracking in `historical_ingest_state.json` - delete to re-run full backfillAHPS)
+
+**Data Types:**
+- Stage forecasts (predicted future river levels)
+- Flood warnings and watches (CAP alerts)
+- Official flood stage thresholds (action/minor/moderate/major)
+
+**Use Case:** Authoritative government alerts, predicted future conditions
+
+**Status:** 📋 Schema ready (nws.flood_warnings, nws.stage_forecasts), ingestion not implemented
+
+### Planned: NOAA Precipitation
+
+**Source:** NOAA Multi-Radar Multi-Sensor (MRMS) + National Digital Forecast Database (NDFD)
+
+**Data Types:**
+- Observed rainfall (radar-estimated, last 1/3/6/24/48 hours)
+- Precipitation forecasts (predicted rainfall, 1-7 day outlook)
+
+**Use Case:** Rainfall is the primary driver of river flooding - predict future discharge based on forecasted precipitation
+
+**Status:** 📋 Schema designed (noaa.observed_precipitation, noaa.precipitation_forecasts), not implemented
+
+### Planned: Soil Moisture
+
+**Source:** USDA NRCS SNOTEL + NOAA Climate Prediction Center
+
+**Data Types:**
+- Point observations from field stations (volumetric water content by depth)
+- Basin-averaged saturation index (composite metric 0-100)
+
+**Use Case:** Saturated ground amplifies runoff from rainfall - high soil moisture increases flood risk
+
+**Status:** 📋 Schema designed (soil.moisture_observations, soil.basin_saturation), not implemented
+
+### Planned: USACE Lock & Dam Operations
+
+**Source:** U.S. Army Corps of Engineers Lock Performance Monitoring System
+
+**Data Types:**
+- Current pool levels and release rates
+- Scheduled water releases (maintenance/flood control)
+- Operational status (normal, flood control mode, emergency)
+
+**Use Case:** Dam releases can cause sudden discharge spikes - scheduled releases provide advance warning
+
+**Status:** 📋 Schema designed (usace.lock_operations, usace.scheduled_releases), not implemented
+
+---
+
+## Configuration
+
+### Station Configuration (stations.toml)
+
+All station metadata, flood thresholds, and geographic relationships are defined in `stations.toml`:
+
+```toml
+[[station]]
+site_code = "05568500"
+name = "Illinois River at Kingston Mines, IL"
+description = "Pool gauge for Peoria region (zero lag)"
+latitude = 40.550556
+longitude = -89.761111
+
+distance_from_peoria_miles = 0
+distance_direction = "upstream"
+travel_time_to_peoria_hours = 0
+
+expected_parameters = ["00060", "00065"]
+
+[station.thresholds]
+action_stage_ft = 15.0
+flood_stage_ft = 18.0
+moderate_flood_stage_ft = 21.0
+major_flood_stage_ft = 23.0
+```
+
+**Station Reliability:** 6 of 8 configured stations operational (verified Feb 2026)
+- 2 stations offline/decommissioned (Henry, Mackinaw Green Valley)
+- System continues operating with degraded station set
+- See [docs/STATION_RESILIENCE.md](flomon_service/docs/STATION_RESILIENCE.md)
+
+### Database Schema
+
+**Multi-schema architecture** for data source separation:
+
+```
+usgs_raw.*   -- USGS gauge readings and site metadata
+nws.*        -- NWS flood thresholds, forecasts, alerts (planned)
+noaa.*       -- Precipitation observations and forecasts (planned)
+usace.*      -- Lock/dam operations and releases (planned)
+soil.*       -- Soil moisture and saturation (planned)
+```
+
+**Current tables:**
+- `usgs_raw.gauge_readings` - Time-series discharge and stage measurements
+- `usgs_raw.sites` - Station metadata and coordinates
+- `usgs_raw.monitoring_state` - Polling status and staleness tracking
+- `nws.flood_thresholds` - Official NWS action/flood/moderate/major stages
+
+**Planned tables:** See [docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXTENSIBILITY.md) for future data sources
+
+### Upstream Early Warning
+
+**Flood wave travel times** (Illinois River reference):
+
+| Station | Distance | Travel Time | Use Case |
+|---------|----------|-------------|----------|
+| Marseilles | 80 mi upstream | 36 hours | Long-range warning |
+| Starved Rock | 60 mi upstream | 24-48 hours | Medium-range forecast |
+| Chillicothe | 10 mi upstream | 9 hours | Short-term alert |
+| Kingston Mines | Pool gauge | 0 hours | Current conditions |
+
+Times vary with flow velocity, precipitation, and USACE dam operations.
+
+---
+
+**Hybrid Database + In-Memory Cache:**
+- Database (`monitoring_state` table): Source of truth, survives restarts
+- In-memory cache: Fast staleness checks without database queries
+- Refreshed on startup, updated each poll cycle
+- See [sql/002_monitoring_metadata.sql](flomon_service/sql/002_monitoring_metadata.sql)
+
+**Station Resilience:**
+- Graceful degradation when stations go offline
+- Per-parameter validation (discharge and stage tracked independently)
+- Database constraints prevent duplicate readings (`ON CONFLICT DO NOTHING`)
+- System continues with partial station set
+
+**Test-Driven Development:**
+- Function stubs with failing tests for unimplemented features
+- 17 TDD placeholders (staleness detection, data grouping, flood thresholds)
+- Tests pass as functions are implemented
+GitHub wikis are separate git repositories. To publish these pages:
+
+### 1. Clone the Wiki Repository
+
 ```bash
-cargo run --bin historical_ingest
-```
-Updates only the recent IV data since last run (DV historical data is static).
-
----
-
-**State Tracking:**
-
-The binary maintains state in `historical_ingest_state.json`:
-
-```json
-{
-  "dv_initialized": true,
-  "iv_initialized": true,
-  "last_update": "2026-02-19T07:15:00.000000000+00:00",
-  "dv_last_year_completed": 2025,
-  "site_progress": {}
-}
-```
-
-**Key Features:**
-- ✅ **Resumable:** DV ingestion tracks progress by year - can resume if interrupted
-- ✅ **Idempotent:** Database `UNIQUE` constraint prevents duplicates
-- ✅ **Rate-limited:** 2-second delays between requests to respect USGS API
-- ✅ **Two-phase:** Separately tracks DV (historical) and IV (recent) completion
-
-**Configuration:**
-- Delete state file to re-run full historical ingestion
-- Partial DV ingestion resumes from last completed year
-- Edit database directly for manual adjustments
-
-**Expected Ingestion Times** (first run):
-```
-Phase 1 (DV Historical): ~3-4 minutes
-  - 87 years × 8 sites
-  - ~2 seconds per year (API rate limit)
-  - Total: ~174 seconds + API response time
-
-Phase 2 (IV Recent): ~10-15 seconds
-  - 120 days × 8 sites  
-  - 1 API call (P120D period)
-  - ~11,520 readings per site
-
-Combined first run: ~4-5 minutes total
-```
-
-**Storage Estimates:**
-- DV data: ~31,755 days × 2 params × 8 sites = ~508,080 daily records
-- IV data: ~11,520 readings × 2 params × 8 sites = ~184,320 15-min records
-- **Total initial load:** ~692,400 gauge readings
-
-Incremental updates (daily): ~1,152 new IV readings (8 sites × 2 params × 96 readings/day)
-
-**Scheduling:**
-Set up a cron job for daily updates:
-```cron
-# Run daily at 2 AM
-0 2 * * * cd /path/to/flomon_service && cargo run --release --bin historical_ingest >> ingest.log 2>&1
-```
-
----
-
-## Data Sources
-
-### USGS NWIS Instantaneous Values (IV) API
-
-The primary data source is the United States Geological Survey's National Water Information System (NWIS) Instantaneous Values service.
-
-**API Endpoint:** `https://waterservices.usgs.gov/nwis/iv/`
-
-#### Data Type & Quality
-
-**Measurements Provided:**
-- **Discharge (Parameter 00060)**: Streamflow in cubic feet per second (cfs)
-- **Gage Height (Parameter 00065)**: River stage in feet (ft)
-
-**Data Quality Characteristics:**
-
-| Attribute | Value | Notes |
-|-----------|-------|-------|
-| **Measurement Interval** | 15 minutes | 4 readings per hour at :00, :15, :30, :45 |
-| **Data Freshness** | ~15 minutes | Typical lag between measurement and API availability |
-| **Data Qualifier** | P (Provisional) or A (Approved) | Provisional data subject to revision |
-| **Timezone** | Central Time (CST/CDT) | Timestamps include UTC offset |
-| **Coordinate System** | WGS84 (EPSG:4326) | Latitude/longitude in decimal degrees |
-| **Missing Data Sentinel** | -999999 | Indicates no data available |
-
-#### Measurement Resolution & Reliability
-
-**Temporal Resolution:**
-- New readings every **15 minutes**
-- Recommended polling interval: **15-20 minutes**
-- Staleness threshold: Data older than **45-60 minutes** indicates potential station outage
-
-**Data Availability:**
-- USGS gauges are highly reliable with >95% uptime
-- Readings may be temporarily unavailable during:
-  - Equipment maintenance
-  - Extreme flood events (gauge overflow)
-  - Ice conditions
-  - Communication failures
-
-**Data Accuracy:**
-- Provisional data (qualifier "P"): Subject to revision, ±5-10% accuracy
-- Approved data (qualifier "A"): Final QA/QC complete, ±2-5% accuracy
-- Stage measurements typically more accurate than discharge calculations
-
-#### API Response Format
-
-Responses are delivered as WaterML rendered in JSON format. Each request returns:
-- One `timeSeries` object per site × parameter combination
-- Array of time-stamped measurements with qualifiers
-- Site metadata (name, location, timezone)
-- Parameter metadata (units, description, sentinel values)
-
-**Example:** Request for 1 site with 2 parameters (discharge + stage) returns 2 `timeSeries` entries.
-
-**Key Parsing Notes:**
-- ⚠️ Measurement values are **strings** (`"4820"`) not numbers
-- Timestamps in ISO 8601 format with timezone offset
-- Values array sorted chronologically (most recent = last element)
-- Empty value arrays or `-999999` sentinel indicate missing data
-
-#### Data Coverage
-
-**Monitored Stations:**
-- Primary: Illinois River at Kingston Mines, IL (05568500)
-- Additional stations throughout Peoria basin (see `stations.rs`)
-- Upstream early warning points on Illinois Waterway
-
-**Update Frequency:**
-- Real-time stations report every 15 minutes
-- Data typically available via API within 15-30 minutes of measurement
-
-#### Historical Data Availability & Strategy
-
-**Dual-Source Ingestion:**
-
-FloPro uses two complementary USGS data sources to provide both historical context and operational detail:
-
-| Data Source | API Endpoint | Coverage | Resolution | Records/Site |
-|-------------|--------------|----------|------------|--------------|
-| **Daily Values (DV)** | `/nwis/dv/` | Oct 1939 - 125 days ago | Daily means | ~31,755 days |
-| **Instantaneous Values (IV)** | `/nwis/iv/` | Last 120 days | 15-minute | ~11,520 readings |
-
-**Why Two Sources?**
-
-1. **IV API Limitation:** The Instantaneous Values API maintains only a **120-day rolling window** - data older than ~4 months is archived and unavailable.
-
-2. **DV Long-term Availability:** The Daily Values API provides **87 years of historical data** (1939-present) with daily resolution.
-
-3. **Complementary Coverage:** DV provides flood history for modeling; IV provides operational detail for monitoring.
-
-**Data Availability by Time Period (Site 05568500):**
-
-| Time Period | DV Available | IV Available | Resolution |
-|-------------|--------------|--------------|------------|
-| 1939-2025 (historical) | ✅ Daily means | ❌ Archived | 1 reading/day |
-| Last 120 days | ✅ Daily means | ✅ 15-min | Both available |
-| Future updates | ✅ Appended daily | ✅ Rolling window | Ongoing |
-
-**Tested Data Availability (February 2026):**
-- **DV API:** Data from October 1939 to present ✅
-- **IV API:** Last 120 days only (Nov 2025 - Feb 2026) ✅  
-- **DV API beyond 1939:** No data (site established Oct 1939) ❌
-
----
-
-**For Historical Flood Analysis:**
-
-This dual-ingestion approach enables comprehensive flood risk modeling:
-
-✅ **Decade-scale trends:** Use DV daily data (1939-2026) to identify:
-- Historical flood events (1993, 2013, 2019)
-- Seasonal patterns and return intervals  
-- Long-term climate trends
-- Baseline conditions for property risk assessment
-
-✅ **Event-scale detail:** Use IV 15-minute data (<120 days) to analyze:
-- Recent flood event progression
-- Sub-daily flood dynamics
-- Real-time monitoring and alerting
-- Validation of flood forecasts
-
-✅ **Continuous coverage:** Database merges both sources:
-- 87 years of daily context
-- Recent high-resolution overlay
-- No data gaps at the 4-month transition point
-- Automated updates maintain rolling IV window
-
-**Alternative Sources (Not Currently Implemented):**
-
-The following USGS resources are available for specialized historical analysis:
-
-- **USGS Peak Flow Data:** `https://nwis.waterdata.usgs.gov/nwis/peak`
-  - Annual peak discharge records
-  - Often extends back 100+ years
-  - Critical for flood frequency analysis and return interval calculations
-  
-- **NWS AHPS Historical Crests:** `https://water.weather.gov/ahps/`
-  - Historical high water marks with event narratives
-  - Flood stage exceedance records
-  - Impact assessments and flood inundation maps
-
----
-
-## Flood Warning Lead Time
-
-The service leverages upstream monitoring points to provide early flood warnings:
-
-| Station | Location | Lead Time to Peoria |
-|---------|----------|---------------------|
-| Starved Rock L&D | Near Utica/Ottawa, IL | 24-48 hours |
-| Dresden Island L&D | Morris, IL (Illinois River headwaters) | 48-72 hours |
-| Brandon Road / Lockport L&D | Joliet, IL | 60-84 hours |
-
-Lead times are approximate and vary with flow velocity, precipitation patterns, and Corps of Engineers operational decisions at locks and dams.
-
----
-
-## Architecture
-
-### Staleness Detection & Monitoring State
-
-**Problem:** The service polls USGS API every 15 minutes. We need to:
-- Track when we last polled each station
-- Detect when readings become stale (no fresh data)
-- Maintain fresh data visibility without constant database queries
-- Survive service restarts without losing state
-
-**Solution: Hybrid Database + In-Memory Cache**
-
-#### Database (Source of Truth)
-- **`monitoring_state` table**: Tracks polling metadata per station
-  - Last poll time (attempted/succeeded)
-  - Latest reading timestamp and value
-  - Station status (active/degraded/offline)
-  - Consecutive failure count
-  - Per-station staleness thresholds
-- **`station_health` view**: Dashboard-ready health status
-- **Survives restarts**: State persists across service crashes
-- **Auditable**: Track status changes over time
-
-#### In-Memory Cache (Performance)
-- **Fast staleness checks**: No DB query for every reading
-- **Refreshed on startup**: Load from `monitoring_state` table
-- **Updated each poll**: Sync after storing new readings
-- **Hot path optimization**: Alert checks use cache
-
-#### Data Flow
-```
-1. Poll USGS API (every 15 min)
-2. Store readings in gauge_readings table
-3. Update monitoring_state via SQL function
-4. Refresh in-memory cache from DB
-5. Check cache for stale/offline stations
-6. Send alerts if needed
-```
-
-**Why not disk state files?**
-- Duplicate state management (DB + JSON files)
-- Synchronization complexity
-- No query capability for analysis
-- Database already persistent and queryable
-
-**Why not pure in-memory?**
-- Lost on service restart
-- No historical status tracking
-- Can't analyze failure patterns
-
-See:
-- `sql/002_monitoring_metadata.sql` - Database schema
-- `src/monitor/mod.rs` - Hybrid implementation
-
----
+# Clone your main repo's wiki
+git clone https://github.com/treeherder/illinois_river_flood_warning.wiki.git
+cd illinois_river_flood_warning.wiki
+```---
 
 ## Technology Stack
 
-- **Language:** Rust
-- **Data Format:** JSON (WaterML)
+- **Language:** Rust (Edition 2024)
+- **Database:** PostgreSQL 14+ (multi-schema design)
+- **Configuration:** TOML
 - **Dependencies:**
-  - `serde` / `serde_json` — JSON parsing
-  - `chrono` — Timestamp handling
-  
+  - `postgres` 0.19 - Database client
+  - `reqwest` 0.11 - HTTP client for USGS/NOAA/NWS APIs
+  - `serde` / `serde_json` - JSON parsing (WaterML format)
+  - `chrono` - Timestamp handling
+  - `toml` 0.8 - Configuration file parsing
+
+## Project Roadmap
+
+### Phase 1: Foundation (Current)
+- ✅ Configuration system (TOML-based station metadata)
+- ✅ USGS data clients (IV and DV APIs)
+- ✅ Historical ingestion (87-year backfill with resumable state)
+- ✅ PostgreSQL schema (multi-schema for extensibility)
+- ✅ Testing framework (21 passing, 17 TDD stubs, 4 integration)
+
+### Phase 2: Core Monitoring (In Progress)
+- 🔄 Implement staleness detection (function stubs in place)
+- 🔄 Implement data grouping (function stubs in place)
+- 🔄 Implement flood threshold checking (function stubs in place)
+- ⏸️ Real-time monitoring daemon (main.rs)
+- ⏸️ Alert dispatch system
+
+### Phase 3: Multi-Source Integration (Planned)
+- 📋 NWS forecast ingestion (AHPS hydrographs)
+- 📋 NWS alert ingestion (CAP feeds for watches/warnings)
+- 📋 NOAA precipitation (MRMS observed + NDFD forecasts)
+- 📋 USACE lock/dam operations
+- 📋 Soil moisture data (NRCS SNOTEL)
+
+### Phase 4: Intelligence (Future)
+- 📋 Flood prediction models (regression analysis on historical data)
+- 📋 Multi-source risk scoring (combine gauge + weather + soil + dam releases)
+- 📋 Automated flood event detection
+- 📋 Return interval calculations
+
+### Phase 5: User Interface (Future)
+- 📋 Web dashboard (real-time visualization)
+- 📋 Historical charts and comparisons
+- 📋 Alert subscription system
+- 📋 Mobile notifications
+
 ---
 
-## Development Status
+## Documentation
 
-**Current Phase:** Historical data warehouse with station resilience
+- [PRE_INGESTION_STRATEGY.md](flomon_service/docs/PRE_INGESTION_STRATEGY.md) - Why to apply database schema before loading historical data
+- [SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXTENSIBILITY.md) - How to add new data sources (NWS, NOAA, USACE, soil)
+- [STATION_RESILIENCE.md](flomon_service/docs/STATION_RESILIENCE.md) - Handling offline stations and degraded data
+- [DATA_STORAGE_STRATEGY.md](flomon_service/docs/DATA_STORAGE_STRATEGY.md) - Database design for missing data tracking
+- [stations.toml](flomon_service/stations.toml) - Station configuration reference
 
-### Completed ✓
+## Contributing
 
-- [x] **Station registry and metadata** — 8 USGS gauge stations with parameter tracking
-- [x] **USGS IV API client** — Instantaneous Values (15-min, 120-day window)
-- [x] **USGS DV API client** — Daily Values (1939-present, 87 years)
-- [x] **Historical data ingestion** — Dual-tier DV+IV backfill with resumable state
-- [x] **PostgreSQL database** — Multi-schema design with UNIQUE constraints
-- [x] **Station resilience** — Graceful degradation, parameter validation, offline handling
-- [x] **Integration tests** — Live API verification (manual execution)
+This project is in early development. The architecture is designed to be waterway-agnostic - contributions for new river systems, data sources, or prediction models are welcome.
 
-### Station Health Status (Verified Feb 19, 2026)
-
-**Operational Stations (6/8):**
-- ✅ Illinois River at Kingston Mines, IL (05568500) — discharge + stage
-- ✅ Illinois River at Peoria, IL (05567500) — discharge + stage  
-- ✅ Illinois River at Chillicothe, IL (05568000) — discharge + stage
-- ✅ Spoon River at Seville, IL (05570000) — discharge + stage
-- ✅ Illinois River at Marseilles, IL (05552500) — discharge + stage
-- ✅ Chicago Sanitary & Ship Canal at Romeoville, IL (05536890) — discharge + stage
-
-**Offline/Decommissioned Stations (2/8):**
-- ❌ Illinois River at Henry, IL (05557000) — no data available from API
-- ❌ Mackinaw River near Green Valley, IL (05568580) — no data available from API
-
-**System Resilience:**
-The service continues operating with 6 active stations. Parse functions skip empty entries, database operations use `ON CONFLICT DO NOTHING` to handle missing data gracefully. See `docs/STATION_RESILIENCE.md` for operational procedures.
-
-**Verification Command:**
-```bash
-cargo test station_api_verify_all_registry_stations -- --ignored --nocapture
-```
-
-### In Progress / Planned
-
-- [ ] **Real-time monitoring service** — Continuous polling and alerting (main.rs)
-- [ ] **Data grouping by site** — Multi-site analysis and comparison (9 tests failing)
-- [ ] **Flood threshold checking** — NWS action/flood stage alerts (2 tests failing)
-- [ ] **Staleness detection** — Identify offline stations and data gaps (9 tests failing)
-- [ ] **Alert dispatch system** — Notifications for flood conditions
-- [ ] **Web dashboard** — Real-time visualization and historical charts
-- [ ] **Station health monitoring** — Automated detection and recovery from outages
+**To adapt for your waterway:**
+1. Create `stations.toml` with your USGS gauge stations
+2. Configure flood thresholds (get from NWS AHPS for your area)
+3. Set travel times and distances for upstream early warning
+4. Run historical ingestion to populate database
+5. (Future) Train prediction models on your historical flood events
 
 ---
 
@@ -409,12 +406,12 @@ TBD
 
 ---
 
-## Contact & Contribution
+## Disclaimer
 
-This is an experimental flood monitoring service for the Peoria, IL region. 
+This service provides informational flood monitoring only. **For official flood warnings and emergency information, consult the National Weather Service and local emergency management authorities.**
 
 **Data Sources:**
 - USGS NWIS: https://waterservices.usgs.gov/
 - NWS AHPS: https://water.noaa.gov/
-
-**Disclaimer:** This service provides informational flood monitoring only. For official flood warnings and emergency information, consult the National Weather Service and local emergency management authorities.
+- NOAA: https://www.noaa.gov/
+- USACE: https://www.usace.army.mil/
