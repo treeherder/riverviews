@@ -242,6 +242,7 @@ fn ingest_historical_dv(
     state: &mut IngestState,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sites = all_site_codes();
+    let site_refs: Vec<&str> = sites.iter().map(|s| s.as_str()).collect();
     
     // Calculate the cutoff date (125 days ago, leaving room for IV data)
     let cutoff_date = Utc::now() - Duration::days(125);
@@ -274,7 +275,7 @@ fn ingest_historical_dv(
         
         println!("\n📅 Ingesting year {} ({} to {})", year, year_start, year_end);
         
-        match fetch_dv_period(&sites, &year_start, &year_end) {
+        match fetch_dv_period(&site_refs, &year_start, &year_end) {
             Ok(readings) => {
                 store_readings(client, &readings)?;
                 state.mark_dv_year_complete(year);
@@ -305,6 +306,7 @@ fn ingest_recent_iv(
     state: &mut IngestState,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let sites = all_site_codes();
+    let site_refs: Vec<&str> = sites.iter().map(|s| s.as_str()).collect();
     
     println!("🔄 Starting IV recent data backfill");
     println!("   Period: Last {} days (15-minute resolution)", IV_LOOKBACK_DAYS);
@@ -320,7 +322,7 @@ fn ingest_recent_iv(
         
         println!("\n📦 Fetching {} days of IV data...", period_days);
         
-        match fetch_iv_period(&sites, &period) {
+        match fetch_iv_period(&site_refs, &period) {
             Ok(readings) => {
                 store_readings(client, &readings)?;
                 println!("   ✓ Successfully fetched and stored data");
@@ -369,9 +371,10 @@ fn incremental_update(
     };
     
     let sites = all_site_codes();
+    let site_refs: Vec<&str> = sites.iter().map(|s| s.as_str()).collect();
     
     println!("📦 Fetching IV period: {}", period);
-    match fetch_iv_period(&sites, &period) {
+    match fetch_iv_period(&site_refs, &period) {
         Ok(readings) => {
             store_readings(client, &readings)?;
             println!("✅ Incremental update complete: {} readings", readings.len());
