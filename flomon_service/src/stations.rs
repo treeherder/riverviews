@@ -7,8 +7,17 @@
 /// service, along with their metadata and NWS flood stage thresholds.
 /// This is the single source of truth for site codes — all other modules
 /// should reference stations from here rather than hardcoding site codes.
+///
+/// ## Configuration-Based Registry
+/// 
+/// Station metadata is now loaded from `stations.toml` configuration file,
+/// allowing threshold updates and station additions without recompilation.
+/// Use `load_stations()` to get the runtime station list, or
+/// `load_stations_map()` for O(1) lookups by site code.
 
+use crate::config;
 use crate::model::FloodThresholds;
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // USGS parameter codes (re-exported here for use in URL construction)
@@ -21,13 +30,17 @@ pub use crate::model::{PARAM_DISCHARGE, PARAM_STAGE};
 // ---------------------------------------------------------------------------
 
 /// Metadata for a single USGS gauge station.
+///
+/// This is a runtime representation combining data from stations.toml
+/// and providing a consistent interface for station queries.
+#[derive(Debug, Clone)]
 pub struct Station {
     /// 8-digit USGS site code.
-    pub site_code: &'static str,
+    pub site_code: String,
     /// Official USGS site name.
-    pub name: &'static str,
+    pub name: String,
     /// Human-readable description of the station's role in flood monitoring.
-    pub description: &'static str,
+    pub description: String,
     /// WGS84 latitude.
     pub latitude: f64,
     /// WGS84 longitude.
@@ -37,135 +50,69 @@ pub struct Station {
     pub thresholds: Option<FloodThresholds>,
     /// Which parameters this station is expected to provide.
     /// Some stations may only report discharge (00060) or stage (00065).
-    pub expected_parameters: &'static [&'static str],
+    pub expected_parameters: Vec<String>,
+    
+    // New fields from configuration
+    /// Distance from Peoria reference point in river miles.
+    pub distance_from_peoria_miles: f64,
+    /// Direction relative to Peoria (upstream, downstream, tributary).
+    pub distance_direction: String,
+    /// Average travel time for flood wave to reach Peoria, in hours.
+    pub travel_time_to_peoria_hours: f64,
 }
 
-/// All USGS gauge stations monitored for Peoria flood risk, ordered
-/// roughly from downstream to upstream / main stem to tributary.
+/// Loads all monitored stations from stations.toml configuration.
 ///
-/// Sources:
-///   - Site codes: USGS NWIS (waterservices.usgs.gov)
-///   - Flood stages: NWS Advanced Hydrologic Prediction Service (water.noaa.gov)
-pub static STATION_REGISTRY: &[Station] = &[
-    Station {
-        site_code: "05568500",
-        name: "Illinois River at Kingston Mines, IL",
-        description: "Primary downstream reference gauge just below Peoria. \
-                      Use for current flood status at the property.",
-        latitude: 40.5614,
-        longitude: -89.9956,
-        thresholds: Some(FloodThresholds {
-            action_stage_ft: 14.0,
-            flood_stage_ft: 16.0,
-            moderate_flood_stage_ft: 20.0,
-            major_flood_stage_ft: 24.0,
-        }),
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05567500",
-        name: "Illinois River at Peoria, IL",
-        description: "Pool gauge at Peoria Lock & Dam. Reflects managed pool \
-                      level rather than free-flowing stage; use Kingston Mines \
-                      for flood stage comparisons.",
-        latitude: 40.6939,
-        longitude: -89.5898,
-        thresholds: None, // pool gauge — NWS thresholds not defined here
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05568000",
-        name: "Illinois River at Chillicothe, IL",
-        description: "Upstream warning station ~20 miles north of Peoria. \
-                      Rising stage here typically leads Peoria by 6–12 hours.",
-        latitude: 40.9200,
-        longitude: -89.4854,
-        thresholds: Some(FloodThresholds {
-            action_stage_ft: 13.0,
-            flood_stage_ft: 15.0,
-            moderate_flood_stage_ft: 19.0,
-            major_flood_stage_ft: 23.0,
-        }),
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05557000",
-        name: "Illinois River at Henry, IL",
-        description: "Early warning station ~50 miles upstream. Stage here \
-                      leads Peoria by 12–24 hours under typical flow.",
-        latitude: 41.1120,
-        longitude: -89.3540,
-        thresholds: Some(FloodThresholds {
-            action_stage_ft: 13.0,
-            flood_stage_ft: 15.0,
-            moderate_flood_stage_ft: 19.0,
-            major_flood_stage_ft: 22.0,
-        }),
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05568580",
-        name: "Mackinaw River near Green Valley, IL",
-        description: "Critical local tributary joining the Illinois near Pekin, \
-                      just south of Peoria. Responds quickly to rainfall; \
-                      a rising Mackinaw is a strong short-term flood precursor.",
-        latitude: 40.7050,
-        longitude: -89.6480,
-        thresholds: None,
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05570000",
-        name: "Spoon River at Seville, IL",
-        description: "Upstream tributary joining the Illinois above Havana. \
-                      Less directly coupled to Peoria than the Mackinaw but \
-                      contributes to overall basin load.",
-        latitude: 40.4906,
-        longitude: -90.0381,
-        thresholds: None,
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05552500",
-        name: "Illinois River at Marseilles, IL",
-        description: "Main stem gauge near Starved Rock L&D, ~80 miles upstream. \
-                      Provides earliest main-stem warning; stage here leads \
-                      Peoria by roughly 24–48 hours.",
-        latitude: 41.3303,
-        longitude: -88.7431,
-        thresholds: Some(FloodThresholds {
-            action_stage_ft: 12.0,
-            flood_stage_ft: 14.0,
-            moderate_flood_stage_ft: 18.0,
-            major_flood_stage_ft: 22.0,
-        }),
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-    Station {
-        site_code: "05536890",
-        name: "Chicago Sanitary & Ship Canal at Romeoville, IL",
-        description: "Monitors flow from the Chicago metro area entering the \
-                      Illinois River system. Tracks MWRD releases during heavy \
-                      rain events, which can spike main-stem flows significantly.",
-        latitude: 41.6367,
-        longitude: -88.0920,
-        thresholds: None,
-        expected_parameters: &[PARAM_DISCHARGE, PARAM_STAGE],
-    },
-];
+/// This is the primary way to access the station registry. Use this
+/// instead of a static global to allow runtime configuration updates.
+///
+/// # Panics
+/// Panics if stations.toml is missing or malformed.
+pub fn load_stations() -> Vec<Station> {
+    config::load_config()
+        .into_iter()
+        .map(|cfg| Station {
+            site_code: cfg.site_code,
+            name: cfg.name,
+            description: cfg.description,
+            latitude: cfg.latitude,
+            longitude: cfg.longitude,
+            thresholds: cfg.thresholds.as_ref().map(|t| t.into()),
+            expected_parameters: cfg.expected_parameters,
+            distance_from_peoria_miles: cfg.distance_from_peoria_miles,
+            distance_direction: cfg.distance_direction,
+            travel_time_to_peoria_hours: cfg.travel_time_to_peoria_hours,
+        })
+        .collect()
+}
 
-/// Returns the site codes for all monitored stations as a `Vec<&str>`,
-/// suitable for passing directly to `ingest::usgs::build_iv_url`.
-pub fn all_site_codes() -> Vec<&'static str> {
-    STATION_REGISTRY.iter().map(|s| s.site_code).collect()
+/// Loads stations into a HashMap keyed by site code for O(1) lookups.
+///
+/// Useful when processing large volumes of gauge readings where
+/// station lookup is in the hot path.
+pub fn load_stations_map() -> HashMap<String, Station> {
+    load_stations()
+        .into_iter()
+        .map(|s| (s.site_code.clone(), s))
+        .collect()
+}
+
+
+/// Returns the site codes for all monitored stations as a `Vec<String>`,
+/// suitable for passing to `ingest::usgs::build_iv_url()` (after converting to &str).
+pub fn all_site_codes() -> Vec<String> {
+    load_stations()
+        .into_iter()
+        .map(|s| s.site_code)
+        .collect()
 }
 
 /// Returns site codes that expect a specific parameter.
 /// Useful for filtering stations before API requests.
-pub fn sites_with_parameter(param_code: &str) -> Vec<&'static str> {
-    STATION_REGISTRY
-        .iter()
-        .filter(|s| s.expected_parameters.contains(&param_code))
+pub fn sites_with_parameter(param_code: &str) -> Vec<String> {
+    load_stations()
+        .into_iter()
+        .filter(|s| s.expected_parameters.iter().any(|p| p == param_code))
         .map(|s| s.site_code)
         .collect()
 }
@@ -173,14 +120,29 @@ pub fn sites_with_parameter(param_code: &str) -> Vec<&'static str> {
 /// Checks if a station is expected to provide a specific parameter.
 pub fn station_has_parameter(site_code: &str, param_code: &str) -> bool {
     find_station(site_code)
-        .map(|s| s.expected_parameters.contains(&param_code))
+        .map(|s| s.expected_parameters.iter().any(|p| p == param_code))
         .unwrap_or(false)
 }
 
 /// Looks up a station by site code. Returns `None` if not found.
-pub fn find_station(site_code: &str) -> Option<&'static Station> {
-    STATION_REGISTRY.iter().find(|s| s.site_code == site_code)
+pub fn find_station(site_code: &str) -> Option<Station> {
+    load_stations()
+        .into_iter()
+        .find(|s| s.site_code == site_code)
 }
+
+// ---------------------------------------------------------------------------
+// Legacy compatibility - For existing code that expects static references
+// ---------------------------------------------------------------------------
+
+/// Helper to get site codes as &str references for API calls.
+/// 
+/// Since all_site_codes() now returns Vec<String>, this converts
+/// to Vec<&str> for backward compatibility with existing code.
+pub fn all_site_codes_as_refs() -> Vec<String> {
+    all_site_codes()  // Returns Vec<String> which is what we want
+}
+
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -195,7 +157,8 @@ mod tests {
         // USGS site codes for Illinois are 8-digit numeric strings.
         // If any entry in the registry violates this, the IV API will
         // silently drop that site from its response.
-        for station in STATION_REGISTRY {
+        let stations = load_stations();
+        for station in &stations {
             assert_eq!(
                 station.site_code.len(),
                 8,
@@ -204,7 +167,7 @@ mod tests {
                 station.site_code
             );
             assert!(
-                station.site_code.chars().all(|c| c.is_ascii_digit()),
+                station.site_code.chars().all(|c: char| c.is_ascii_digit()),
                 "site code for '{}' should be numeric, got '{}'",
                 station.name,
                 station.site_code
@@ -214,11 +177,12 @@ mod tests {
 
     #[test]
     fn test_no_duplicate_site_codes() {
+        let stations = load_stations();
         let mut seen = std::collections::HashSet::new();
-        for station in STATION_REGISTRY {
+        for station in &stations {
             assert!(
-                seen.insert(station.site_code),
-                "duplicate site code '{}' found in STATION_REGISTRY",
+                seen.insert(station.site_code.clone()),
+                "duplicate site code '{}' found in station registry",
                 station.site_code
             );
         }
@@ -236,7 +200,8 @@ mod tests {
             "05552500", // Marseilles / Starved Rock
             "05536890", // Chicago Sanitary & Ship Canal
         ];
-        let codes: Vec<_> = STATION_REGISTRY.iter().map(|s| s.site_code).collect();
+        let stations = load_stations();
+        let codes: Vec<_> = stations.iter().map(|s| s.site_code.as_str()).collect();
         for expected_code in &expected {
             assert!(
                 codes.contains(expected_code),
@@ -260,14 +225,16 @@ mod tests {
 
     #[test]
     fn test_all_site_codes_helper_matches_registry_length() {
-        assert_eq!(all_site_codes().len(), STATION_REGISTRY.len());
+        let stations = load_stations();
+        assert_eq!(all_site_codes().len(), stations.len());
     }
 
     #[test]
     fn test_thresholds_are_ordered_ascending_where_defined() {
         // action < flood < moderate < major — violating this order would
         // cause check_flood_stage to return incorrect severity levels.
-        for station in STATION_REGISTRY {
+        let stations = load_stations();
+        for station in &stations {
             if let Some(t) = &station.thresholds {
                 assert!(
                     t.action_stage_ft < t.flood_stage_ft,
@@ -299,7 +266,8 @@ mod tests {
 
     #[test]
     fn test_all_stations_have_at_least_one_expected_parameter() {
-        for station in STATION_REGISTRY {
+        let stations = load_stations();
+        for station in &stations {
             assert!(
                 !station.expected_parameters.is_empty(),
                 "station '{}' must have at least one expected parameter",
@@ -320,8 +288,8 @@ mod tests {
         assert!(stage_sites.len() >= 7);
         
         // Kingston Mines should have both
-        assert!(discharge_sites.contains(&"05568500"));
-        assert!(stage_sites.contains(&"05568500"));
+        assert!(discharge_sites.contains(&"05568500".to_string()));
+        assert!(stage_sites.contains(&"05568500".to_string()));
     }
 
     #[test]
@@ -424,13 +392,14 @@ mod integration_tests {
     #[ignore] // Don't run in CI - depends on external API
     fn station_api_verify_all_registry_stations() {
         // This test verifies ALL stations in the registry
+        let stations = load_stations();
         let mut failures = Vec::new();
         let mut warnings = Vec::new();
         
-        for station in STATION_REGISTRY {
+        for station in &stations {
             println!("\n🔍 Checking {} ({})...", station.name, station.site_code);
             
-            let (exists, has_discharge, has_stage, error) = verify_station_api(station.site_code);
+            let (exists, has_discharge, has_stage, error) = verify_station_api(&station.site_code);
             
             if let Some(err) = error {
                 failures.push(format!("{} ({}): {}", station.name, station.site_code, err));
@@ -443,8 +412,8 @@ mod integration_tests {
             }
             
             // Verify expected parameters match reality
-            let expects_discharge = station.expected_parameters.contains(&PARAM_DISCHARGE);
-            let expects_stage = station.expected_parameters.contains(&PARAM_STAGE);
+            let expects_discharge = station.expected_parameters.iter().any(|p| p == PARAM_DISCHARGE);
+            let expects_stage = station.expected_parameters.iter().any(|p| p == PARAM_STAGE);
             
             if expects_discharge && !has_discharge {
                 warnings.push(format!("{} ({}): Expected discharge but not available", station.name, station.site_code));
@@ -481,19 +450,19 @@ mod integration_tests {
             
             // Only panic if ALL stations failed (indicates API or code issue)
             // If only some stations failed, that's expected (stations go offline)
-            if failures.len() == STATION_REGISTRY.len() {
+            if failures.len() == stations.len() {
                 panic!("ALL {} stations failed - this indicates an API or code problem", failures.len());
             } else {
                 println!("\n⚠️  {} of {} stations operational ({} offline)", 
-                         STATION_REGISTRY.len() - failures.len(),
-                         STATION_REGISTRY.len(),
+                         stations.len() - failures.len(),
+                         stations.len(),
                          failures.len());
                 println!("    System designed to handle partial station failures gracefully.");
             }
         }
         
         if failures.is_empty() && warnings.is_empty() {
-            println!("\n✅ All {} stations verified successfully!", STATION_REGISTRY.len());
+            println!("\n✅ All {} stations verified successfully!", stations.len());
         }
     }
 
