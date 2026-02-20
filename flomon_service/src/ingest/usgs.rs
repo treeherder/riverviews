@@ -412,7 +412,8 @@ mod tests {
     #[test]
     fn test_build_url_with_all_peoria_basin_sites() {
         let sites = all_site_codes();
-        let url = build_iv_url(&sites, &[PARAM_DISCHARGE, PARAM_STAGE], "PT1H");
+        let site_refs: Vec<&str> = sites.iter().map(|s| s.as_str()).collect();
+        let url = build_iv_url(&site_refs, &[PARAM_DISCHARGE, PARAM_STAGE], "PT1H");
         for site in &sites {
             assert!(url.contains(site), "URL must include site {}", site);
         }

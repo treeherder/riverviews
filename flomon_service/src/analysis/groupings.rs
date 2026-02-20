@@ -133,9 +133,10 @@ mod tests {
     fn test_pipeline_kingston_mines_18ft_triggers_flood_not_moderate() {
         // Stage of 18.42 ft (from fixture) is above flood (16.0 ft) but
         // below moderate flood (20.0 ft) at Kingston Mines.
-        let thresholds = find_station("05568500")
-            .and_then(|s| s.thresholds.as_ref())
-            .expect("Kingston Mines should have thresholds in the registry");
+        let station = find_station("05568500")
+            .expect("Kingston Mines should be in the registry");
+        let thresholds = station.thresholds.as_ref()
+            .expect("Kingston Mines should have thresholds");
 
         let readings = parse_iv_response(fixture_kingston_mines_json())
             .expect("fixture should parse");
