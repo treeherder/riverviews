@@ -20,9 +20,86 @@ release/
 .DS_Store
 Thumbs.db
 
-# Environment files
+# ============================================================================
+# SECURITY: Credentials and Secrets
+# ============================================================================
+
+# Environment files with database credentials and API keys
 .env
 .env.local
+.env.*.local
+*.env
 
-# Historical ingest state
+# Database credentials
+pg_service.conf
+.pgpass
+
+# API keys and tokens
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+credentials/
+
+# ============================================================================
+# USER-GENERATED DATA
+# ============================================================================
+
+# Historical ingest state tracking
 flomon_service/historical_ingest_state.json
+*_ingest_state.json
+
+# Database dumps and backups
+*.sql.gz
+*.dump
+*.backup
+*.bak
+backups/
+dumps/
+
+# Log files
+*.log
+logs/
+flomon_service/logs/
+
+# CSV exports and data files
+*.csv
+data_exports/
+exports/
+
+# Test output files
+test_results/
+test_data/
+*.test.json
+
+# Downloaded API responses (if cached locally)
+api_cache/
+*.api_response.json
+
+# Analysis outputs
+analysis_output/
+reports/
+
+# ============================================================================
+# BUILD AND RUNTIME ARTIFACTS
+# ============================================================================
+
+# Python bytecode (if any Python tooling added)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Shell command artifacts
+ql *
+t --*
+illinois_river_flood_warning.wiki/

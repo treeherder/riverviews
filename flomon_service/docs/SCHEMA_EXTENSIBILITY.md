@@ -12,29 +12,24 @@ The FloPro database schema is designed for incremental expansion. New data sourc
 ### Current State (Applied)
 - ✅ `001_initial_schema.sql` - USGS gauge readings and site metadata
 - ✅ `002_monitoring_metadata.sql` - Staleness tracking and health monitoring
-
-### Ready to Apply (Data Populated Later)
-- 🔄 `003_flood_metadata.sql` - NWS flood thresholds and historical events
-  - Can apply schema now, populate data after historical ingestion
-  - Threshold table pre-initialized from stations.toml
-  - Event detection runs after gauge reading backfill
+- ✅ `003_flood_metadata.sql` - NWS flood thresholds and historical events (118 historical floods ingested)
+- ✅ `004_usace_cwms.sql` - USACE Corps Water Management System data (backwater flood detection)
 
 ### Future Expansions (Planned)
-- 📋 `004_precipitation.sql` - NOAA rainfall observations and forecasts
-- 📋 `005_soil_moisture.sql` - NRCS/SNOTEL soil saturation data
-- 📋 `006_nws_forecasts.sql` - AHPS stage predictions and alerts
-- 📋 `007_usace_operations.sql` - Lock/dam release schedules
+- 📋 `005_precipitation.sql` - NOAA rainfall observations and forecasts
+- 📋 `006_soil_moisture.sql` - NRCS/SNOTEL soil saturation data
+- 📋 `007_nws_forecasts.sql` - AHPS stage predictions and alerts
 
 ## Extensibility Principles
 
 ### 1. Schema-per-Source
 Each data provider gets its own schema namespace:
 ```sql
-usgs_raw.*   -- USGS gauge readings
-nws.*        -- National Weather Service alerts/forecasts
-noaa.*       -- NOAA precipitation/weather
-usace.*      -- US Army Corps of Engineers operations
-soil.*       -- Soil moisture/saturation (NRCS, NOAA CPC)
+usgs_raw.*   -- USGS gauge readings and site metadata
+nws.*        -- National Weather Service thresholds, flood events, alerts/forecasts
+usace.*      -- US Army Corps of Engineers (CWMS) - Mississippi backwater, lock/dam ops
+noaa.*       -- NOAA precipitation/weather (future)
+soil.*       -- Soil moisture/saturation (NRCS, NOAA CPC) (future)
 ```
 
 ### 2. Non-Destructive Migrations

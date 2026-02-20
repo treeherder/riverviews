@@ -7,3 +7,4 @@
 /// trend analysis, basin-wide flood potential scoring.
 
 pub mod groupings;
+pub mod flood_events;

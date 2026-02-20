@@ -173,7 +173,7 @@ echo "DATABASE_URL=postgresql://localhost/flomon" > flomon_service/.env
 
 ### Historical Data Ingestion
 
-Load 87 years of USGS data (Illinois River reference implementation):
+Load all available historical USGS data (Illinois River reference implementation):
 
 ```bash
 cd flomon_service
