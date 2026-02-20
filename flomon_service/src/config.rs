@@ -31,6 +31,9 @@ pub struct StationConfig {
     
     // Expected USGS parameters at this site
     pub expected_parameters: Vec<String>,  // e.g., ["00060", "00065"]
+    
+    // Peak flow data metadata (optional)
+    pub peak_flow: Option<PeakFlowMetadata>,
 }
 
 /// Flood stage thresholds from NWS AHPS
@@ -41,6 +44,18 @@ pub struct ThresholdConfig {
     pub moderate_flood_stage_ft: f64,
     pub major_flood_stage_ft: f64,
     pub description: String,
+}
+
+/// Peak flow data availability and metadata
+#[derive(Debug, Clone, Deserialize)]
+pub struct PeakFlowMetadata {
+    #[serde(default)]
+    pub available: Option<bool>,  // false if no data in USGS database
+    pub url: Option<String>,
+    pub period_of_record: Option<String>,
+    pub years_available: Option<u32>,
+    pub notable_floods: Option<String>,
+    pub notes: Option<String>,
 }
 
 /// Root configuration structure for TOML parsing

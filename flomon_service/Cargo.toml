@@ -11,7 +11,9 @@ toml = "0.8"  # Configuration file parsing
 
 # Database - with chrono support for DateTime types
 postgres = { version = "0.19", features = ["with-chrono-0_4"] }
+rust_decimal = { version = "1.33", features = ["db-postgres"] }  # PostgreSQL NUMERIC support
 dotenv = "0.15"
 
-# HTTP client (for USGS API) - using rustls to avoid OpenSSL dependency
-reqwest = { version = "0.11", features = ["blocking", "rustls-tls"], default-features = false }
+# HTTP client (for USGS and CWMS APIs) - using rustls to avoid OpenSSL dependency
+reqwest = { version = "0.11", features = ["blocking", "json", "rustls-tls"], default-features = false }
+urlencoding = "2.1"  # URL encoding for CWMS API requests

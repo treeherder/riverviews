@@ -26,6 +26,9 @@ distance_from_peoria_miles = 10.0
 distance_direction = "downstream"
 travel_time_to_peoria_hours = 0.0  # Reference point - this IS Peoria for monitoring purposes
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]  # discharge + stage
+
 # NWS Flood Stage Thresholds (feet above gauge datum)
 # Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=ilx&gage=kini2
 [station.thresholds]
@@ -35,17 +38,21 @@ moderate_flood_stage_ft = 20.0  # Moderate flooding - structures threatened
 major_flood_stage_ft = 24.0     # Major flooding - widespread severe inundation
 description = "NWS official thresholds for Kingston Mines. This is the primary flood reference for Peoria area properties."
 
-# Expected USGS parameters available at this site
-expected_parameters = ["00060", "00065"]  # discharge + stage
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05568500&agency_cd=USGS&format=rdb"
+period_of_record = "1941-2024"
+years_available = 84
+notable_floods = "2008-09 (101,000 cfs, 24.68'), 2013-04 (96,800 cfs, 24.62'), 2019-05 (94,200 cfs, 24.21')"
 
 # =============================================================================
-# PEORIA POOL GAUGE (Not used for flood monitoring)
+# PEORIA POOL GAUGE
 # =============================================================================
 
 [[station]]
 site_code = "05567500"
 name = "Illinois River at Peoria, IL"
-description = "Pool gauge at Peoria Lock & Dam. Reflects managed pool level rather than free-flowing stage; use Kingston Mines for flood stage comparisons."
+description = "Pool gauge at Peoria Lock & Dam. Managed pool level, but still has flood stage thresholds. Historical peak flow data available from USGS peak streamflow database."
 
 latitude = 40.6939
 longitude = -89.5898
@@ -54,10 +61,25 @@ distance_from_peoria_miles = 0.0
 distance_direction = "at"
 travel_time_to_peoria_hours = 0.0
 
-# No NWS flood thresholds - this is a managed pool gauge
-# [station.thresholds] - intentionally omitted
-
+# Expected USGS parameters available at this site
 expected_parameters = ["00060", "00065"]
+
+# NWS Flood Stage Threshold for Peoria Pool
+# Source: USGS Peak Streamflow database indicates 18.0 ft is flood stage
+# Peak flow data: https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05567500&agency_cd=USGS&format=rdb
+[station.thresholds]
+action_stage_ft = 17.0       # Pre-flood preparation (estimated)
+flood_stage_ft = 18.0         # Official flood stage per USGS peak flow records
+moderate_flood_stage_ft = 20.0  # Moderate flooding (estimated based on historical crests)
+major_flood_stage_ft = 22.0     # Major flooding (estimated)
+description = "Pool gauge thresholds. Peak streamflow database shows complete annual peak record; stage > 18.0 ft defines flood events."
+
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05567500&agency_cd=USGS&format=rdb"
+period_of_record = "1945-2025"
+years_available = 80
+notable_floods = "1982-12 (20.21'), 1986-10 (19.61'), 2013-04 (18.79'), 2015-12 (19.09')"
 
 # =============================================================================
 # UPSTREAM WARNING STATIONS (Main Stem Illinois River)
@@ -75,6 +97,9 @@ distance_from_peoria_miles = 20.0
 distance_direction = "upstream"
 travel_time_to_peoria_hours = 9.0  # Average 6-12 hours, use midpoint
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]
+
 # Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=ilx&gage=chti2
 [station.thresholds]
 action_stage_ft = 13.0
@@ -83,7 +108,13 @@ moderate_flood_stage_ft = 19.0
 major_flood_stage_ft = 23.0
 description = "Earliest local warning station. Flood stage here precedes Peoria flooding by 6-12 hours."
 
-expected_parameters = ["00060", "00065"]
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05568000&agency_cd=USGS&format=rdb"
+period_of_record = "1922-2025"
+years_available = 104
+notable_floods = "2013-04 (28.48'), 2015-12 (29.18'), 2019-05 (28.19')"
+notes = "Datum change detected around 1990 - pre-1990 stages ~16 ft, post-1990 ~26 ft for similar flows"
 
 [[station]]
 site_code = "05557000"
@@ -97,6 +128,9 @@ distance_from_peoria_miles = 50.0
 distance_direction = "upstream"
 travel_time_to_peoria_hours = 18.0  # Average 12-24 hours, use midpoint
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]
+
 # Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=ilx&gage=heni2
 [station.thresholds]
 action_stage_ft = 13.0
@@ -105,7 +139,13 @@ moderate_flood_stage_ft = 19.0
 major_flood_stage_ft = 22.0
 description = "Mid-range early warning. Provides 12-24 hour advance notice of Peoria flooding."
 
-expected_parameters = ["00060", "00065"]
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05557000&agency_cd=USGS&format=rdb"
+period_of_record = "1931-2025"
+years_available = 95
+notable_floods = "1974-05 (20,100 cfs, 16.14'), 1990-06 (7,450 cfs, 14.28')"
+notes = "USGS header shows 'West Bureau Creek at Wyanet' - verify site code mapping"
 
 [[station]]
 site_code = "05552500"
@@ -119,6 +159,9 @@ distance_from_peoria_miles = 80.0
 distance_direction = "upstream"
 travel_time_to_peoria_hours = 36.0  # Average 24-48 hours, use midpoint
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]
+
 # Source: https://water.weather.gov/ahps2/hydrograph.php?wfo=lot&gage=mrsi2
 [station.thresholds]
 action_stage_ft = 12.0
@@ -127,7 +170,13 @@ moderate_flood_stage_ft = 18.0
 major_flood_stage_ft = 22.0
 description = "Earliest main-stem warning station. Flood stage here provides 24-48 hours advance notice."
 
-expected_parameters = ["00060", "00065"]
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05552500&agency_cd=USGS&format=rdb"
+period_of_record = "1915-2025"
+years_available = 111
+notable_floods = "1996-07 (55,400 cfs, 24.47' - DAM FAILURE), 2008-09 (44,300 cfs, 21.48'), 2013-04 (38,800 cfs, 20.70')"
+notes = "USGS header shows 'Fox River at Dayton' - verify site code. 1996 dam failure (code 3) is extreme outlier"
 
 # =============================================================================
 # TRIBUTARY STATIONS (Flash Flood Indicators)
@@ -145,11 +194,17 @@ distance_from_peoria_miles = 8.0
 distance_direction = "tributary_south"
 travel_time_to_peoria_hours = 3.0  # Fast response - joins near Peoria
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]
+
 # No official NWS flood thresholds for this tributary
 # Monitor for rapid discharge increases rather than absolute stage
 # [station.thresholds] - intentionally omitted
 
-expected_parameters = ["00060", "00065"]
+# Peak flow data
+[station.peak_flow]
+available = false
+notes = "No data found in USGS Peak Streamflow database - returns 'No sites/data found'"
 
 [[station]]
 site_code = "05570000"
@@ -163,10 +218,19 @@ distance_from_peoria_miles = 35.0
 distance_direction = "tributary_southwest"
 travel_time_to_peoria_hours = 12.0  # Indirect impact via confluence downstream
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]
+
 # No official NWS flood thresholds
 # [station.thresholds] - intentionally omitted
 
-expected_parameters = ["00060", "00065"]
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05570000&agency_cd=USGS&format=rdb"
+period_of_record = "1916-2025"
+years_available = 110
+notable_floods = "2013-04 (42,500 cfs, 35.80' - EXTREME), 1993-07 (34,700 cfs, 33.10'), 1974-06 (36,400 cfs, 31.82')"
+notes = "No flood thresholds defined, so cannot auto-detect flood events from peak data"
 
 # =============================================================================
 # CHICAGO METRO CONTRIBUTION
@@ -184,12 +248,63 @@ distance_from_peoria_miles = 120.0
 distance_direction = "upstream_northeast"
 travel_time_to_peoria_hours = 48.0  # Very slow canal flow, combines with main stem at Marseilles area
 
+# Expected USGS parameters available at this site
+expected_parameters = ["00060", "00065"]
+
 # No flood stage thresholds - monitor absolute discharge levels
 # High flow from Chicago (>10,000 cfs) indicates metro-area flood releases
 # [station.thresholds] - intentionally omitted
 
-expected_parameters = ["00060", "00065"]
+# Peak flow data source
+[station.peak_flow]
+url = "https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05536890&agency_cd=USGS&format=rdb"
+period_of_record = "2005-2024"
+years_available = 20
+notable_floods = "2020-05 (21,700 cfs, 29.03'), 2013-04 (21,400 cfs, 28.73')"
+notes = "All flows regulated (code 6,C). No flood thresholds defined, so cannot auto-detect flood events"
 
+# =============================================================================
+# HISTORICAL DATA SOURCES
+# =============================================================================
+# 
+# USGS Peak Streamflow Database (Annual Peak Flows)
+# --------------------------------------------------
+# Each station has a complete record of annual peak stage and discharge events.
+# This is the authoritative source for historical flood event detection.
+#
+# Format: Tab-delimited RDB (USGS standard format)
+# Access: https://nwis.waterdata.usgs.gov/[state]/nwis/peak?site_no=[SITE_CODE]&agency_cd=USGS&format=rdb
+#
+# Example URLs:
+#   - Peoria Pool:      https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05567500&agency_cd=USGS&format=rdb
+#   - Kingston Mines:   https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05568500&agency_cd=USGS&format=rdb
+#   - Chillicothe:      https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05568000&agency_cd=USGS&format=rdb
+#   - Henry:            https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05557000&agency_cd=USGS&format=rdb
+#   - Marseilles:       https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05552500&agency_cd=USGS&format=rdb
+#   - Mackinaw River:   https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05568580&agency_cd=USGS&format=rdb
+#   - Spoon River:      https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05570000&agency_cd=USGS&format=rdb
+#   - Chicago Canal:    https://nwis.waterdata.usgs.gov/il/nwis/peak?site_no=05536890&agency_cd=USGS&format=rdb
+#
+# Each record contains:
+#   - peak_dt: Date of annual maximum (YYYY-MM-DD)
+#   - peak_va: Peak stage in feet
+#   - peak_cd: Peak discharge qualification code
+#   - gage_ht: Gage height (may differ from stage)
+#   - gage_ht_cd: Gage height qualification code
+#   - year_last_pk: Water year of peak
+#   - ag_dt: Date value approved/entered
+#   - ag_tm: Time value approved/entered
+#   - ag_gage_ht: Maximum gage height for year
+#   - ag_gage_ht_cd: Qualification code
+#
+# Flood Event Detection Logic:
+#   For each station with thresholds, any peak where stage >= flood_stage_ft
+#   should be inserted into nws.flood_events table with:
+#     - event_start: Estimated based on rise time before peak
+#     - crest_time: peak_dt from record
+#     - peak_stage_ft: peak_va from record
+#     - severity: Determined by which threshold was exceeded
+#
 # =============================================================================
 # PARAMETER CODE DEFINITIONS
 # =============================================================================
