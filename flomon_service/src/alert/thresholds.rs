@@ -1,5 +1,13 @@
 //! Flood stage threshold checking.
 //!
+//! **Simple real-time monitoring** - The daemon compares current readings against
+//! static thresholds (NWS flood stages) to generate immediate alerts.
+//!
+//! **Philosophy:**
+//! - Rust daemon: Simple, fast threshold checks for real-time alerts
+//! - Python/FloML: Complex analysis to discover better thresholds via segmented regression
+//! - Thresholds can be updated based on ML findings for improved accuracy
+//!
 //! Notification dispatch, alert deduplication, and cooldown logic will also likely
 //! live here, since they're closely related to the concept of a "threshold breach"
 //! and may require access to the same metadata about each site (e.g. which parameters
@@ -27,11 +35,51 @@ pub struct FloodAlert {
 /// alert if so.
 ///
 /// Returns `None` if the reading is below the action stage threshold.
+///
+/// **Note:** These are simple static thresholds. The ML/analysis layer
+/// can discover better thresholds through segmented regression and update
+/// these values for more accurate alerts.
 pub fn check_flood_stage(
     reading: &GaugeReading,
     thresholds: &FloodThresholds,
 ) -> Option<FloodAlert> {
-    // TODO: implement threshold checking logic
-    let _ = (reading, thresholds);
-    unimplemented!("check_flood_stage: compare reading.value against threshold levels")
+    let stage = reading.value;
+    
+    // Check thresholds in descending order of severity
+    if stage >= thresholds.major_flood_stage_ft {
+        Some(FloodAlert {
+            severity: FloodSeverity::Major,
+            message: format!(
+                "MAJOR FLOOD at {}: {:.2} ft (major flood stage: {:.2} ft)",
+                reading.site_name, stage, thresholds.major_flood_stage_ft
+            ),
+        })
+    } else if stage >= thresholds.moderate_flood_stage_ft {
+        Some(FloodAlert {
+            severity: FloodSeverity::Moderate,
+            message: format!(
+                "MODERATE FLOOD at {}: {:.2} ft (moderate flood stage: {:.2} ft)",
+                reading.site_name, stage, thresholds.moderate_flood_stage_ft
+            ),
+        })
+    } else if stage >= thresholds.flood_stage_ft {
+        Some(FloodAlert {
+            severity: FloodSeverity::Flood,
+            message: format!(
+                "FLOOD at {}: {:.2} ft (flood stage: {:.2} ft)",
+                reading.site_name, stage, thresholds.flood_stage_ft
+            ),
+        })
+    } else if stage >= thresholds.action_stage_ft {
+        Some(FloodAlert {
+            severity: FloodSeverity::Action,
+            message: format!(
+                "Action stage reached at {}: {:.2} ft (action stage: {:.2} ft)",
+                reading.site_name, stage, thresholds.action_stage_ft
+            ),
+        })
+    } else {
+        // Below action stage - no alert
+        None
+    }
 }
