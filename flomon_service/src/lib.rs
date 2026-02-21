@@ -32,7 +32,6 @@ pub mod asos_locations;
 pub mod config;
 pub mod daemon;
 pub mod db;
-pub mod dev_mode;
 pub mod endpoint;
 pub mod ingest;
 pub mod logging;
