@@ -150,13 +150,19 @@ mod tests {
     }
 
     #[test]
-    fn test_peoria_pool_has_no_thresholds() {
+    fn test_peoria_pool_has_thresholds() {
         let stations = load_config();
         let peoria = stations.iter()
             .find(|s| s.site_code == "05567500")
             .expect("Peoria pool should exist in config");
         
-        assert!(peoria.thresholds.is_none(), "Peoria pool should not have flood thresholds");
+        // Peoria pool is managed but still has flood stage thresholds
+        let thresholds = peoria.thresholds.as_ref()
+            .expect("Peoria pool should have flood thresholds");
+        assert_eq!(thresholds.action_stage_ft, 17.0);
+        assert_eq!(thresholds.flood_stage_ft, 18.0);
+        assert_eq!(thresholds.moderate_flood_stage_ft, 20.0);
+        assert_eq!(thresholds.major_flood_stage_ft, 22.0);
     }
 
     #[test]

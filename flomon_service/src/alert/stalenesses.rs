@@ -37,14 +37,24 @@ pub fn is_stale_at(
     max_age_minutes: u64,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<bool, String> {
-    // TODO: implement with chrono.
-    //   1. Parse reading.datetime as DateTime<FixedOffset>.
-    //   2. Convert to Utc.
-    //   3. Compute (now - reading_time).num_minutes() as u64.
-    //   4. Return Ok(age_minutes > max_age_minutes).
-    //   5. Return Err(...) if datetime parsing fails.
-    let _ = (reading, max_age_minutes, now);
-    unimplemented!("is_stale_at: parse datetime and compare against now")
+    // Parse the reading's datetime as a fixed-offset datetime
+    let reading_time = chrono::DateTime::parse_from_rfc3339(&reading.datetime)
+        .map_err(|e| format!("Failed to parse datetime '{}': {}", reading.datetime, e))?;
+    
+    // Convert to UTC for comparison
+    let reading_time_utc = reading_time.with_timezone(&chrono::Utc);
+    
+    // Calculate the age in minutes
+    let age = now.signed_duration_since(reading_time_utc);
+    let age_minutes = age.num_minutes();
+    
+    // Negative age means reading is from the future - treat as stale (suspicious data)
+    if age_minutes < 0 {
+        return Ok(true);
+    }
+    
+    // Staleness is strictly greater than threshold
+    Ok(age_minutes as u64 > max_age_minutes)
 }
 
 /// Convenience wrapper that uses the real current time.
