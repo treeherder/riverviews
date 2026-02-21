@@ -1,0 +1,177 @@
+# IEM ASOS Station Configuration
+# Iowa Environmental Mesonet — Automated Surface Observing System stations
+#
+# API Documentation: https://mesonet.agron.iastate.edu/request/download.phtml
+# ASOS 1-minute data: https://mesonet.agron.iastate.edu/cgi-bin/request/asos1min.py
+# Current observations: https://mesonet.agron.iastate.edu/json/current.py
+#
+# Data types available:
+#   - precipitation: 1-minute interval rainfall (in)
+#   - temperature: Air temperature (°F)
+#   - wind: Wind speed (knots) and direction (degrees)
+#   - pressure: Atmospheric pressure (mb)
+#   - humidity: Relative humidity (%)
+#   - dewpoint: Dewpoint temperature (°F)
+#
+# Priority levels (auto-detected from relevance):
+#   PRIMARY — poll every 15 minutes (critical real-time monitoring)
+#   HIGH — poll every hour (early warning / tributary basins)
+#   MEDIUM — poll every 6 hours (basin context)
+#   LOW — poll daily (historical / analytical)
+
+# =============================================================================
+# PRIMARY MONITORING STATIONS
+# These are critical for real-time flood monitoring at Upper Peoria Lake
+# =============================================================================
+
+[[asos_stations]]
+station_id  = "KPIA"
+name        = "Peoria International Airport"
+latitude    = 40.664
+longitude   = -89.693
+elevation_ft = 660
+network     = "ASOS"
+data_types  = ["precipitation", "temperature", "wind", "pressure", "humidity", "dewpoint"]
+relevance   = "PRIMARY LOCAL PRECIP — closest ASOS station to Upper Peoria Lake. \
+               Use for current conditions and local rainfall accumulation. \
+               1-minute interval data available from 2000 onward. This is the \
+               gold standard for detecting local convective rainfall that will \
+               impact the property within 6-12 hours."
+basin       = "Illinois River - Peoria reach"
+upstream_gauge = "05568500"  # Kingston Mines - rainfall here drives discharge there
+
+# =============================================================================
+# TRIBUTARY BASIN MONITORING STATIONS  
+# HIGH priority — monitor tributary contributions to Illinois River
+# =============================================================================
+
+[[asos_stations]]
+station_id  = "KBMI"
+name        = "Central Illinois Regional Airport (Bloomington-Normal)"
+latitude    = 40.477
+longitude   = -88.916
+elevation_ft = 871
+network     = "ASOS"
+data_types  = ["precipitation", "temperature", "wind"]
+relevance   = "HIGH — MACKINAW RIVER BASIN PRECIP. Bloomington sits in the upper \
+               Mackinaw River watershed. Rainfall here is a leading indicator of \
+               Mackinaw River rise at USGS 05568580 (outlet), which feeds directly \
+               into the Illinois River near Pekin. Lag time: 12-24 hours from \
+               heavy rainfall to peak Mackinaw discharge."
+basin       = "Mackinaw River"
+upstream_gauge = "05568580"  # Mackinaw River near Congerville
+
+[[asos_stations]]
+station_id  = "KSPI"
+name        = "Abraham Lincoln Capital Airport (Springfield)"
+latitude    = 39.844
+longitude   = -89.678
+elevation_ft = 597
+network     = "ASOS"
+data_types  = ["precipitation", "temperature"]
+relevance   = "HIGH — SOUTHERN BASIN REFERENCE. Useful for tracking storm systems \
+               moving northeast across the basin. Heavy Springfield rainfall often \
+               precedes Sangamon River rises, which join the Illinois at \
+               Beardstown (downstream of Peoria but indicates basin-wide saturation)."
+basin       = "Sangamon River"
+upstream_gauge = "05576500"  # Sangamon River at Riverton
+
+[[asos_stations]]
+station_id  = "KGBG"
+name        = "Galesburg Airport"
+latitude    = 40.938
+longitude   = -90.431
+elevation_ft = 764
+network     = "ASOS"
+data_types  = ["precipitation", "temperature"]
+relevance   = "HIGH — SPOON RIVER BASIN PRECIP. Galesburg is in the upper Spoon \
+               River watershed. Rainfall here drives flow at USGS 05570000 \
+               (Spoon River at Seville), which enters Illinois River at Havana. \
+               Lag time: 18-36 hours from rainfall to Spoon River peak."
+basin       = "Spoon River"
+upstream_gauge = "05570000"  # Spoon River at Seville
+
+# =============================================================================
+# CHICAGO METRO / UPSTREAM MONITORING STATIONS
+# MEDIUM priority — track Chicago-origin flow contributions via CAWS
+# =============================================================================
+
+[[asos_stations]]
+station_id  = "KORD"
+name        = "Chicago O'Hare International Airport"
+latitude    = 41.980
+longitude   = -87.904
+elevation_ft = 672
+network     = "ASOS"
+data_types  = ["precipitation", "temperature", "wind"]
+relevance   = "MEDIUM — CHICAGO METRO PRECIP PROXY. Heavy rainfall at O'Hare drives \
+               MWRD releases through the Chicago Area Waterway System (CAWS). These \
+               releases appear at Lockport L&D (IL02) and Brandon Road L&D (IL03) \
+               6-12 hours later, then propagate down through Dresden Island and \
+               eventually reach Peoria 48-72 hours after the Chicago rainfall event. \
+               This is your early warning for Chicago-origin flow pulses."
+basin       = "Chicago Area Waterway System"
+related_cwms = ["Lockport-Pool", "Brandon-Road-Pool"]
+
+[[asos_stations]]
+station_id  = "KPWK"
+name        = "Chicago Executive Airport (Wheeling)"
+latitude    = 42.114
+longitude   = -87.901
+elevation_ft = 647
+network     = "ASOS"
+data_types  = ["precipitation", "temperature"]
+relevance   = "MEDIUM — NORTHWEST CHICAGO SUBURBS. Feeds the Des Plaines River \
+               drainage, which joins the Kankakee River at Dresden Island to form \
+               the Illinois River. Use in combination with KORD to assess total \
+               Chicago metro rainfall and likely MWRD release volumes."
+basin       = "Des Plaines River"
+related_cwms = ["Dresden-Island-Pool"]
+
+# =============================================================================
+# ADDITIONAL CONTEXT STATIONS (can be added as needed)
+# =============================================================================
+
+# [[asos_stations]]
+# station_id  = "KMDH"
+# name        = "Southern Illinois Airport (Carbondale)"
+# latitude    = 37.778
+# longitude   = -89.252
+# elevation_ft = 411
+# network     = "ASOS"
+# data_types  = ["precipitation", "temperature"]
+# relevance   = "LOW — Far southern Illinois reference. Tracks storm systems \
+#                approaching from the south/southwest before they reach the \
+#                Illinois River basin."
+# basin       = "Southern Illinois (out of basin)"
+
+# =============================================================================
+# IEM API CONFIGURATION
+# =============================================================================
+
+[iem_api]
+base_url = "https://mesonet.agron.iastate.edu"
+asos_1min_endpoint = "/cgi-bin/request/asos1min.py"
+current_endpoint = "/json/current.py"
+daily_summary_endpoint = "/cgi-bin/request/daily.py"
+
+# Data availability notes:
+# - 1-minute data: 2000-present for most ASOS stations
+# - Hourly METAR: 1990s-present
+# - Daily summaries: 1928-present for major airports
+
+[iem_iemre]
+description = "Gridded reanalysis — query any lat/lon for daily or hourly precip"
+endpoint_daily   = "https://mesonet.agron.iastate.edu/iemre/daily/{YYYY-MM-DD}/{LAT}/{LON}/json"
+endpoint_hourly  = "https://mesonet.agron.iastate.edu/iemre/hourly/{YYYY-MM-DD}/{LAT}/{LON}/json"
+endpoint_multiday = "https://mesonet.agron.iastate.edu/iemre/multiday/{date1}/{date2}/{LAT}/{LON}/json"
+property_coords  = { lat = 40.720, lon = -89.640 }
+record_start     = "1893-01-01"
+update_frequency = "~10 minutes after each hour"
+variables        = ["high_tmpf", "low_tmpf", "precip", "snow", "snowd", "avg_sknt"]
+
+[iem_mrms]
+description = "Multi-Radar Multi-Sensor quantitative precipitation estimates"
+wms_endpoint = "https://mesonet.agron.iastate.edu/cgi-bin/wms/us/mrms.cgi"
+layers       = ["mrms_p1h", "mrms_p24h", "mrms_p48h", "mrms_p72h"]
+raster_download = "https://mesonet.agron.iastate.edu/rainfall/mrms2img.py"

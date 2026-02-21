@@ -1,10 +1,12 @@
 # Database Setup Scripts
 
-This directory contains scripts for validating and configuring the PostgreSQL database required by the Flopro flood monitoring service.
+This directory contains scripts for validating and configuring the PostgreSQL database 
+required by the Flopro flood monitoring service, plus analysis scripts for historical
+flood event characterization.
 
 ## Scripts
 
-### `validate_db_setup.sh`
+### `validate_db_setup.sh` - Database Validation
 
 **Purpose:** Comprehensive database setup validation and diagnostic tool.
 
@@ -114,6 +116,57 @@ Verifying schema access:
 - After running schema migrations
 - When permission errors occur
 - After creating new schemas
+
+---
+
+### `generate_flood_zone_snapshots.py` - Historical Flood Analysis
+
+**Purpose:** Generate zone-based snapshots for all historical flood events to support 
+regression analysis and ML model training.
+
+**What it does:**
+- Queries historical flood events from `nws.flood_events`
+- For each event, fetches sensor readings ±6 hours from crest time
+- Organizes readings by hydrological zone (7 zones from zones.toml)
+- Classifies event type: TOP_DOWN, BOTTOM_UP, LOCAL_TRIBUTARY, or COMPOUND
+- Detects backwater conditions (Mississippi River influence)
+- Identifies upstream flood pulses
+- Generates comprehensive markdown report for analysis
+
+**Usage:**
+```bash
+cd flomon_service/scripts
+python3 generate_flood_zone_snapshots.py [options]
+```
+
+**Options:**
+- `--db-url URL` - Database connection (default: from .env)
+- `--zones-config PATH` - Path to zones.toml (default: ../zones.toml)
+- `--output FILE` - Output markdown file (default: ../../PEAK_FLOW_SUMMARY.md)
+
+**Prerequisites:**
+- Python 3.7+ with `psycopg2-binary` and `toml` packages
+- Database populated with flood events (run `ingest_peak_flows` first)
+- zones.toml configuration file
+- Optional: Historical gauge readings for complete sensor data
+
+**Output:**
+- Markdown report with zone status at each flood crest
+- Event type classification
+- Backwater/upstream pulse indicators
+- Sensor readings organized by zone
+- Ready for regression analysis
+
+**Example:**
+```bash
+# Install dependencies
+pip install psycopg2-binary toml
+
+# Generate report
+python3 generate_flood_zone_snapshots.py
+```
+
+**See:** [README_ZONE_SNAPSHOTS.md](README_ZONE_SNAPSHOTS.md) for complete documentation
 
 ---
 

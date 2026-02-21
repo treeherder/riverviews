@@ -26,6 +26,20 @@ pub struct CwmsTimeseriesResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct CwmsCatalogEntry {
+    pub name: String,
+    pub office: String,
+    #[serde(rename = "interval-offset")]
+    pub interval_offset: Option<i32>,
+    pub units: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CwmsCatalogResponse {
+    pub entries: Option<Vec<CwmsCatalogEntry>>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CwmsValue {
     #[serde(rename = "date-time")]
     pub date_time: i64,  // Unix timestamp in milliseconds
@@ -143,6 +157,121 @@ pub fn fetch_historical(
 }
 
 // ============================================================================
+// CWMS Catalog Discovery
+// ============================================================================
+
+/// Query CWMS catalog to discover available timeseries for a location pattern
+///
+/// # Parameters
+/// - `client`: HTTP client
+/// - `office`: CWMS office ID (e.g., "MVR", "MVS")
+/// - `location_pattern`: Wildcard pattern (e.g., "Peoria.*", "LaGrange.*")
+///
+/// # Example
+/// ```
+/// let catalog = discover_timeseries(&client, "MVR", "Peoria.*")?;
+/// // Returns all timeseries like:
+/// //   Peoria-Pool.Elev.Inst.~1Hour.0.CBT-RAW
+/// //   Peoria-TW.Elev.Inst.~1Hour.0.CBT-RAW
+/// ```
+pub fn discover_timeseries(
+    client: &reqwest::blocking::Client,
+    office: &str,
+    location_pattern: &str,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    
+    let url = format!(
+        "{}/catalog/TIMESERIES?office={}&like={}&format=json",
+        CWMS_API_BASE,
+        office,
+        urlencoding::encode(location_pattern)
+    );
+    
+    println!("   Querying CWMS catalog: {}", url);
+    
+    let response = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()?;
+    
+    if !response.status().is_success() {
+        return Err(format!("CWMS catalog API error: {}", response.status()).into());
+    }
+    
+    let catalog: CwmsCatalogResponse = response.json()?;
+    
+    let timeseries_ids = catalog.entries
+        .unwrap_or_default()
+        .into_iter()
+        .map(|entry| entry.name)
+        .collect();
+    
+    Ok(timeseries_ids)
+}
+
+/// Discover pool elevation timeseries for a location
+///
+/// Searches for timeseries containing "Pool" and "Elev" in the location pattern
+pub fn discover_pool_elevation(
+    client: &reqwest::blocking::Client,
+    office: &str,
+    location_base: &str,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    
+    let pattern = format!("{}.*", location_base);
+    let all_timeseries = discover_timeseries(client, office, &pattern)?;
+    
+    // Look for pool elevation timeseries
+    // Prioritize: Pool.Elev.Inst > Pool.Elev.Ave > any with "Pool" and "Elev"
+    let pool_elev = all_timeseries.iter()
+        .find(|ts| ts.contains("-Pool.") && ts.contains(".Elev.Inst"))
+        .or_else(|| all_timeseries.iter().find(|ts| ts.contains("-Pool.") && ts.contains(".Elev.")))
+        .or_else(|| all_timeseries.iter().find(|ts| ts.contains("Pool") && ts.contains("Elev")))
+        .cloned();
+    
+    Ok(pool_elev)
+}
+
+/// Discover tailwater elevation timeseries for a location
+pub fn discover_tailwater_elevation(
+    client: &reqwest::blocking::Client,
+    office: &str,
+    location_base: &str,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    
+    let pattern = format!("{}.*", location_base);
+    let all_timeseries = discover_timeseries(client, office, &pattern)?;
+    
+    // Look for tailwater elevation timeseries
+    // Patterns: -TW.Elev, -Tailwater.Elev, TW-*.Elev
+    let tw_elev = all_timeseries.iter()
+        .find(|ts| ts.contains("-TW.") && ts.contains(".Elev.Inst"))
+        .or_else(|| all_timeseries.iter().find(|ts| (ts.contains("-TW.") || ts.contains("TW-") || ts.contains("Tailwater")) && ts.contains(".Elev.")))
+        .cloned();
+    
+    Ok(tw_elev)
+}
+
+/// Discover stage timeseries for a river gauge location (not a pool)
+pub fn discover_stage(
+    client: &reqwest::blocking::Client,
+    office: &str,
+    location_base: &str,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
+    
+    let pattern = format!("{}.*", location_base);
+    let all_timeseries = discover_timeseries(client, office, &pattern)?;
+    
+    // Look for stage timeseries (for river gauges, not pools)
+    let stage = all_timeseries.iter()
+        .find(|ts| ts.contains(".Stage.Inst"))
+        .or_else(|| all_timeseries.iter().find(|ts| ts.contains(".Stage.")))
+        .cloned();
+    
+    Ok(stage)
+}
+
+// ============================================================================
 // Backwater Detection Logic
 // ============================================================================
 
@@ -154,6 +283,29 @@ pub fn detect_backwater(
     threshold_ft: f64,
 ) -> bool {
     (mississippi_stage_ft - illinois_stage_ft) > threshold_ft
+}
+
+/// Detect loss of hydraulic control at a lock/dam
+///
+/// When tailwater elevation approaches or exceeds pool elevation, the dam
+/// has lost hydraulic control - backwater is dominant and the dam cannot
+/// maintain its target pool level.
+///
+/// # Critical for LaGrange
+/// At LaGrange Lock & Dam, when tailwater >= pool, the Mississippi River
+/// is driving water levels all the way up to Peoria. This is the key
+/// indicator that your property is flooding from "the bottom up" rather
+/// than from upstream flow.
+///
+/// # Returns
+/// - `true` if hydraulic control lost (tailwater >= pool - margin)
+/// - `false` if dam maintaining control
+pub fn detect_hydraulic_control_loss(
+    pool_elevation_ft: f64,
+    tailwater_elevation_ft: f64,
+    margin_ft: f64,
+) -> bool {
+    (tailwater_elevation_ft + margin_ft) >= pool_elevation_ft
 }
 
 /// Classify backwater severity based on stage differential

@@ -61,33 +61,127 @@ fn main() {
     }
     println!("✓ Daemon initialized\n");
     
-    // Start HTTP endpoint if requested
+    // Check for stale data and backfill if needed
+    println!("📋 Checking data freshness...");
+    let mut backfill_needed = Vec::new();
+    
+    // Collect station codes first to avoid borrow checker issues
+    let station_codes: Vec<String> = daemon.get_stations()
+        .iter()
+        .map(|s| s.site_code.clone())
+        .collect();
+    
+    for site_code in &station_codes {
+        match daemon.check_staleness(site_code) {
+            Ok(None) => {
+                println!("   {} - No data found (needs backfill)", site_code);
+                backfill_needed.push(site_code.clone());
+            }
+            Ok(Some(staleness)) => {
+                let hours = staleness.num_hours();
+                if hours > 2 {
+                    println!("   {} - Data is {} hours old (stale)", site_code, hours);
+                    backfill_needed.push(site_code.clone());
+                } else {
+                    println!("   {} - Data is fresh ({} min old)", site_code, staleness.num_minutes());
+                }
+            }
+            Err(e) => {
+                eprintln!("   {} - Error checking staleness: {}", site_code, e);
+            }
+        }
+    }
+    
+    // Run backfill for stations that need it
+    if !backfill_needed.is_empty() {
+        println!("\n📥 Backfilling {} USGS stations...", backfill_needed.len());
+        for site_code in &backfill_needed {
+            match daemon.backfill_station(site_code) {
+                Ok(count) => println!("   ✓ {} - Inserted {} readings", site_code, count),
+                Err(e) => eprintln!("   ✗ {} - Backfill failed: {}", site_code, e),
+            }
+        }
+        println!();
+    }
+    
+    // Check CWMS locations for stale data
+    println!("📋 Checking CWMS data freshness...");
+    let mut cwms_backfill_needed = Vec::new();
+    
+    // Collect CWMS locations (clone to avoid borrow checker issues)
+    let cwms_locations: Vec<_> = daemon.get_cwms_locations().to_vec();
+    
+    for location in &cwms_locations {
+        // Skip locations without discovered timeseries
+        if location.discovered_timeseries.is_none() {
+            println!("   {} - Skipped (no timeseries discovered)", location.name);
+            continue;
+        }
+        
+        match daemon.check_cwms_staleness(&location.cwms_location) {
+            Ok(None) => {
+                println!("   {} - No data found (needs backfill)", location.name);
+                cwms_backfill_needed.push(location.clone());
+            }
+            Ok(Some(staleness)) => {
+                let hours = staleness.num_hours();
+                if hours > 2 {
+                    println!("   {} - Data is {} hours old (stale)", location.name, hours);
+                    cwms_backfill_needed.push(location.clone());
+                } else {
+                    println!("   {} - Data is fresh ({} min old)", location.name, staleness.num_minutes());
+                }
+            }
+            Err(e) => {
+                eprintln!("   {} - Error checking staleness: {}", location.name, e);
+            }
+        }
+    }
+    
+    // Run backfill for CWMS locations that need it
+    if !cwms_backfill_needed.is_empty() {
+        println!("\n📥 Backfilling {} CWMS locations...", cwms_backfill_needed.len());
+        for location in &cwms_backfill_needed {
+            match daemon.backfill_cwms_location(location) {
+                Ok(count) => println!("   ✓ {} - Inserted {} readings", location.name, count),
+                Err(e) => eprintln!("   ✗ {} - Backfill failed: {}", location.name, e),
+            }
+        }
+        println!();
+    }
+    
+    // Start HTTP endpoint if requested (in background thread)
     if let Some(port) = endpoint_port {
         println!("🚀 Starting HTTP endpoint server...");
         
         // Get a new database connection for the endpoint
         match flomon_service::db::connect_with_validation() {
             Ok(client) => {
-                if let Err(e) = endpoint::start_endpoint_server(port, client) {
-                    eprintln!("❌ Endpoint server error: {}", e);
-                    std::process::exit(1);
-                }
+                // Spawn endpoint server in background thread
+                std::thread::spawn(move || {
+                    if let Err(e) = endpoint::start_endpoint_server(port, client) {
+                        eprintln!("❌ Endpoint server error: {}", e);
+                    }
+                });
+                println!("   Endpoint running on http://0.0.0.0:{}\n", port);
             }
             Err(e) => {
                 eprintln!("❌ Failed to connect to database for endpoint: {}", e);
-                std::process::exit(1);
+                eprintln!("   Continuing without HTTP endpoint\n");
             }
         }
-    } else {
-        println!("📋 Startup checks:");
-        println!("   ⚠️  Staleness check: not yet implemented");
-        println!("   ⚠️  Backfill missing data: not yet implemented");
-        println!("   ⚠️  Continuous monitoring: not yet implemented\n");
-        
-        println!("ℹ️  Run tests to guide implementation:");
-        println!("   cargo test --test daemon_lifecycle\n");
-        println!("ℹ️  Start with HTTP endpoint:");
-        println!("   cargo run --release -- --endpoint 8080\n");
+    }
+    
+    // Run the main monitoring loop
+    println!("🔄 Starting continuous monitoring loop...");
+    println!("   Poll interval: 15 minutes");
+    println!("   Monitoring {} USGS stations + {} CWMS locations", 
+            daemon.get_stations().len(), daemon.get_cwms_locations().len());
+    println!("   Press Ctrl+C to stop\n");
+    
+    if let Err(e) = daemon.run() {
+        eprintln!("\n❌ Daemon error: {}", e);
+        std::process::exit(1);
     }
 }
 
