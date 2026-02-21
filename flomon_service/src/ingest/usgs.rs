@@ -97,8 +97,8 @@ const DV_BASE_URL: &str = "https://waterservices.usgs.gov/nwis/dv/";
 ///
 /// # Example
 /// ```
-/// use crate::ingest::usgs::build_iv_url;
-/// use crate::stations::{PARAM_DISCHARGE, PARAM_STAGE};
+/// use flomon_service::ingest::usgs::build_iv_url;
+/// use flomon_service::stations::{PARAM_DISCHARGE, PARAM_STAGE};
 /// 
 /// // Request data from Kingston Mines and Peoria stations
 /// let url = build_iv_url(
@@ -132,8 +132,8 @@ pub fn build_iv_url(sites: &[&str], param_codes: &[&str], period: &str) -> Strin
 ///
 /// # Example
 /// ```
-/// use crate::ingest::usgs::build_dv_url;
-/// use crate::stations::{PARAM_DISCHARGE, PARAM_STAGE};
+/// use flomon_service::ingest::usgs::build_dv_url;
+/// use flomon_service::stations::{PARAM_DISCHARGE, PARAM_STAGE};
 /// 
 /// // Request historical daily data
 /// let url = build_dv_url(

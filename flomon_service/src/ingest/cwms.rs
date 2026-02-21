@@ -168,11 +168,14 @@ pub fn fetch_historical(
 /// - `location_pattern`: Wildcard pattern (e.g., "Peoria.*", "LaGrange.*")
 ///
 /// # Example
-/// ```
+/// ```no_run
+/// # use flomon_service::ingest::cwms::discover_timeseries;
+/// # let client = reqwest::blocking::Client::new();
 /// let catalog = discover_timeseries(&client, "MVR", "Peoria.*")?;
 /// // Returns all timeseries like:
 /// //   Peoria-Pool.Elev.Inst.~1Hour.0.CBT-RAW
 /// //   Peoria-TW.Elev.Inst.~1Hour.0.CBT-RAW
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn discover_timeseries(
     client: &reqwest::blocking::Client,

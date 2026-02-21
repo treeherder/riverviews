@@ -223,11 +223,13 @@ pub fn locations_by_priority(priority: MonitoringPriority) -> Result<Vec<UsaceLo
 /// what timeseries are actually available.
 ///
 /// # Example
-/// ```
+/// ```no_run
+/// # use flomon_service::usace_locations::{find_location, discover_timeseries_ids};
 /// let location = find_location("Peoria-Pool").unwrap();
 /// let client = reqwest::blocking::Client::new();
 /// let discovered = discover_timeseries_ids(&client, &location)?;
 /// // discovered.pool_elevation might be "Peoria-Pool.Elev.Inst.~1Hour.0.CBT-RAW"
+/// # Ok::<(), String>(())
 /// ```
 pub fn discover_timeseries_ids(
     client: &reqwest::blocking::Client,
