@@ -19,11 +19,21 @@
 
 use flomon_service::daemon::Daemon;
 use flomon_service::endpoint;
+use flomon_service::logging::{self, LogLevel};
 use std::env;
 
 fn main() {
     println!("🌊 Flood Monitoring Service");
     println!("============================\n");
+    
+    // Initialize logging system
+    // Log to both console and file in the current directory
+    let log_file = "./flomon_service.log";
+    let log_level = LogLevel::Info;  // Change to Debug for verbose output
+    let console_timestamps = false;  // Clean console output, timestamps in file
+    
+    logging::init_logger(log_level, Some(log_file), console_timestamps);
+    println!("📝 Logging to {}\n", log_file);
     
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();

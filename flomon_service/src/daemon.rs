@@ -9,6 +9,7 @@
 /// 6. Generates alerts for threshold exceedances and staleness
 
 use crate::db;
+use crate::logging;
 use crate::stations::{self, Station};
 use crate::usace_locations::{self, UsaceLocation};
 use crate::asos_locations::{self, AsosLocation};
@@ -239,7 +240,8 @@ impl Daemon {
                         println!("   Fetched {} instantaneous readings (last 120 days)", count);
                     }
                     Err(e) => {
-                        eprintln!("   Warning: IV backfill failed, falling back to daily values: {}", e);
+                        logging::log_usgs_failure(site_code, "IV backfill", &*e);
+                        eprintln!("   Falling back to daily values for {}", site_code);
                         total_inserted += self.backfill_daily_values(
                             site_code, 
                             now - Duration::days(120), 
@@ -274,7 +276,8 @@ impl Daemon {
                             println!("   Fetched {} instantaneous readings", count);
                         }
                         Err(e) => {
-                            eprintln!("   Warning: IV backfill failed, falling back to daily values: {}", e);
+                            logging::log_usgs_failure(site_code, "IV backfill (gap fill)", &*e);
+                            eprintln!("   Falling back to daily values for {}", site_code);
                             total_inserted += self.backfill_daily_values(
                                 site_code, 
                                 now - staleness, 
@@ -303,7 +306,8 @@ impl Daemon {
                             println!("   Fetched {} instantaneous readings (last 120 days)", count);
                         }
                         Err(e) => {
-                            eprintln!("   Warning: Recent IV backfill failed: {}", e);
+                            logging::log_usgs_failure(site_code, "Recent IV backfill", &*e);
+                            eprintln!("   Falling back to daily values for {}", site_code);
                             total_inserted += self.backfill_daily_values(
                                 site_code, 
                                 now - Duration::days(120), 
@@ -347,7 +351,7 @@ impl Daemon {
         let readings = match usgs::parse_dv_response(&body) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("   Warning: Failed to parse DV response: {}", e);
+                logging::log_usgs_failure(site_code, "DV API parsing", &e);
                 return Ok(0);
             }
         };
