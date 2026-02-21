@@ -1,10 +1,55 @@
-# Database Setup Scripts
+# FloPro Utility Scripts
 
-This directory contains scripts for validating and configuring the PostgreSQL database 
-required by the Flopro flood monitoring service, plus analysis scripts for historical
-flood event characterization.
+This directory contains scripts for database setup, diagnostics, historical data analysis,
+and flood event characterization.
 
-## Scripts
+## Diagnostic and Analysis Scripts
+
+### `test_usgs_services.py` - USGS API Services Diagnostic
+
+**Purpose:** Test all three USGS data services (IV, DV, Peak) to verify availability and data quality.
+
+**Usage:**
+```bash
+python3 scripts/test_usgs_services.py
+```
+
+**Tests performed:**
+- IV Service (Instantaneous Values) - last 3 hours
+- DV Service (Daily Values) - last 30 days  
+- Peak Service (Annual Peaks) - full historical record
+
+---
+
+### `check_db_status.py` - Database Status Check
+
+**Purpose:** Quick database connectivity and data availability check.
+
+**Usage:**
+```bash
+python3 scripts/check_db_status.py
+```
+
+**Checks:**
+- Database connectivity
+- Available readings per station
+- Latest reading timestamps
+- Data freshness
+
+---
+
+### `analyze_historical_data.py` - Historical Data Analysis
+
+**Purpose:** Analyze historical data patterns and availability in the database.
+
+**Usage:**
+```bash
+python3 scripts/analyze_historical_data.py
+```
+
+---
+
+## Database Setup Scripts
 
 ### `validate_db_setup.sh` - Database Validation
 
