@@ -5,6 +5,9 @@
 /// making it convenient to ask "what is the current stage at Kingston Mines?"
 /// without filtering a flat list every time.
 ///
+/// `group_by_zone` organizes readings by hydrological zone from zones.toml,
+/// providing geographic context and lead time analysis for flood forecasting.
+///
 /// This module provides basic data organization helpers. Complex analysis
 /// such as trend detection, rate-of-rise calculations, and upstream correlation
 /// are handled by external Python scripts that operate on the curated database.
@@ -16,6 +19,7 @@
 use std::collections::HashMap;
 
 use crate::model::{GaugeReading, SiteReadings};
+use crate::zones::{ZonesConfig, Sensor, get_all_zones};
 
 // ---------------------------------------------------------------------------
 // Grouping
@@ -50,6 +54,62 @@ pub fn group_by_site(readings: Vec<GaugeReading>) -> HashMap<String, SiteReading
     }
     
     grouped
+}
+
+// ---------------------------------------------------------------------------
+// Zone-based Grouping
+// ---------------------------------------------------------------------------
+
+/// Zone-based sensor readings with metadata
+#[derive(Debug, Clone)]
+pub struct ZoneReadings {
+    pub zone_id: usize,
+    pub zone_name: String,
+    pub sensors: Vec<SensorWithData>,
+}
+
+/// Sensor with its latest readings
+#[derive(Debug, Clone)]
+pub struct SensorWithData {
+    pub sensor: Sensor,
+    pub readings: Option<SiteReadings>,
+}
+
+/// Group readings by zone from zones.toml configuration
+pub fn group_by_zone(readings: Vec<GaugeReading>, zones_config: &ZonesConfig) -> Vec<ZoneReadings> {
+    // First group readings by site code for quick lookup
+    let site_grouped = group_by_site(readings);
+    
+    let mut zone_readings_vec = Vec::new();
+    
+    // Iterate through all zones (0-6)
+    for (zone_id, zone) in get_all_zones(zones_config) {
+        let mut sensors_with_data = Vec::new();
+        
+        for sensor in &zone.sensors {
+            // Try to find readings for this sensor
+            let site_readings = if let Some(usgs_id) = &sensor.usgs_id {
+                site_grouped.get(usgs_id).cloned()
+            } else {
+                // For non-USGS sensors (CWMS, ASOS), we'll handle them separately
+                // in the endpoint layer by querying appropriate tables
+                None
+            };
+            
+            sensors_with_data.push(SensorWithData {
+                sensor: sensor.clone(),
+                readings: site_readings,
+            });
+        }
+        
+        zone_readings_vec.push(ZoneReadings {
+            zone_id,
+            zone_name: zone.name.clone(),
+            sensors: sensors_with_data,
+        });
+    }
+    
+    zone_readings_vec
 }
 
 // ---------------------------------------------------------------------------

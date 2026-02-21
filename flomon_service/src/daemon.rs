@@ -10,9 +10,13 @@
 
 use crate::db;
 use crate::stations::{self, Station};
+use crate::usace_locations::{self, UsaceLocation};
+use crate::asos_locations::{self, AsosLocation};
 use crate::model::GaugeReading;
+use crate::ingest::{usgs, cwms, iem};
 use chrono::{DateTime, Duration, Utc};
 use postgres::Client;
+use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -50,6 +54,8 @@ impl Default for DaemonConfig {
 pub struct Daemon {
     config: DaemonConfig,
     stations: Vec<Station>,
+    cwms_locations: Vec<UsaceLocation>,
+    asos_locations: Vec<AsosLocation>,
     client: Option<Client>,
 }
 
@@ -59,6 +65,8 @@ impl Daemon {
         Self {
             config: DaemonConfig::default(),
             stations: Vec::new(),
+            cwms_locations: Vec::new(),
+            asos_locations: Vec::new(),
             client: None,
         }
     }
@@ -68,6 +76,8 @@ impl Daemon {
         Self {
             config,
             stations: Vec::new(),
+            cwms_locations: Vec::new(),
+            asos_locations: Vec::new(),
             client: None,
         }
     }
@@ -76,16 +86,75 @@ impl Daemon {
     pub fn initialize(&mut self) -> Result<(), Box<dyn Error>> {
         // Validate database schemas
         let client = db::connect_and_verify(&["usgs_raw", "nws", "usace"])?;
-        self.client = Some(client);
         
-        // Load station registry
+        // Load USGS station registry from TOML
         self.stations = stations::load_stations();
         
         if self.stations.is_empty() {
             return Err("No stations configured in stations.toml".into());
         }
         
+        // Load CWMS locations from TOML
+        let mut locations = usace_locations::load_locations()?;
+        
+        if locations.is_empty() {
+            eprintln!("Warning: No USACE/CWMS locations configured in usace_iem.toml");
+        } else {
+            // Discover actual CWMS timeseries IDs from catalog endpoint
+            println!("🔍 Discovering CWMS timeseries IDs from catalog...");
+            let http_client = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(15))
+                .build()?;
+            
+            for location in &mut locations {
+                print!("   {} ... ", location.name);
+                match usace_locations::update_with_discovered_timeseries(location, &http_client) {
+                    Ok(_) => println!("✓"),
+                    Err(e) => {
+                        println!("✗ {}", e);
+                        eprintln!("      Warning: Will skip polling for {}", location.name);
+                    }
+                }
+            }
+            
+            // Filter to only locations with discovered timeseries
+            let discovered_count = locations.iter()
+                .filter(|loc| loc.discovered_timeseries.is_some())
+                .count();
+            
+            println!("   Discovered timeseries for {}/{} locations\n", 
+                    discovered_count, locations.len());
+        }
+        
+        self.cwms_locations = locations;
+        
+        // Load ASOS locations from TOML
+        let asos_path = std::path::Path::new("iem_asos.toml");
+        if asos_path.exists() {
+            let asos_locs = asos_locations::load_locations(asos_path)?;
+            println!("📡 Loaded {} ASOS stations for precipitation monitoring", asos_locs.len());
+            for loc in &asos_locs {
+                println!("   {} ({}) - {} basin - Priority: {:?}",
+                    loc.station_id, loc.name, loc.basin, loc.priority);
+            }
+            self.asos_locations = asos_locs;
+        } else {
+            eprintln!("Warning: iem_asos.toml not found, skipping ASOS monitoring");
+        }
+        
+        self.client = Some(client);
+        
         Ok(())
+    }
+    
+    /// Get reference to loaded stations
+    pub fn get_stations(&self) -> &[Station] {
+        &self.stations
+    }
+    
+    /// Get reference to loaded CWMS locations
+    pub fn get_cwms_locations(&self) -> &[UsaceLocation] {
+        &self.cwms_locations
     }
     
     /// Check staleness of data for a specific station
@@ -113,6 +182,30 @@ impl Daemon {
         }
     }
     
+    /// Check staleness of CWMS data for a specific location
+    pub fn check_cwms_staleness(&mut self, location_id: &str) -> Result<Option<Duration>, Box<dyn Error>> {
+        let client = self.client.as_mut()
+            .ok_or("Daemon not initialized")?;
+        
+        let rows = client.query(
+            "SELECT MAX(timestamp) as latest 
+             FROM usace.cwms_timeseries 
+             WHERE location_id = $1",
+            &[&location_id]
+        )?;
+        
+        if rows.is_empty() {
+            return Ok(None);
+        }
+        
+        let latest: Option<DateTime<Utc>> = rows[0].get(0);
+        
+        match latest {
+            Some(dt) => Ok(Some(Utc::now() - dt)),
+            None => Ok(None),
+        }
+    }
+    
     /// Check if backfill is needed for a station
     pub fn needs_backfill(&mut self, site_code: &str) -> Result<bool, Box<dyn Error>> {
         match self.check_staleness(site_code)? {
@@ -125,27 +218,468 @@ impl Daemon {
     }
     
     /// Backfill historical data for a station
+    /// Uses intelligent strategy: IV API for recent data (high-res), DV API for deep history
     pub fn backfill_station(&mut self, site_code: &str) -> Result<usize, Box<dyn Error>> {
-        // TODO: Implement backfill logic
-        // 1. Determine date range to fetch (based on latest data or backfill_days config)
-        // 2. Call USGS IV API for historical data
-        // 3. Parse response and insert readings
-        // 4. Return count of inserted readings
+        let now = Utc::now();
         
-        let _ = site_code;
-        unimplemented!("backfill_station: fetch and insert historical data")
+        // Check what data we already have
+        let latest_data = self.check_staleness(site_code)?;
+        
+        let mut total_inserted = 0;
+        
+        match latest_data {
+            None => {
+                // No data at all - get high-resolution recent data + optional deep history
+                println!("   Empty database for {} - fetching high-resolution data", site_code);
+                
+                // Always get the last 120 days as instantaneous values (high resolution)
+                match self.backfill_instantaneous_values(site_code, 120) {
+                    Ok(count) => {
+                        total_inserted += count;
+                        println!("   Fetched {} instantaneous readings (last 120 days)", count);
+                    }
+                    Err(e) => {
+                        eprintln!("   Warning: IV backfill failed, falling back to daily values: {}", e);
+                        total_inserted += self.backfill_daily_values(
+                            site_code, 
+                            now - Duration::days(120), 
+                            now
+                        )?;
+                    }
+                }
+                
+                // Optionally get older data as daily values if backfill_days > 120
+                if self.config.backfill_days > 120 {
+                    let deep_history_days = self.config.backfill_days - 120;
+                    println!("   Fetching {} additional days of daily values for historical context", deep_history_days);
+                    
+                    total_inserted += self.backfill_daily_values(
+                        site_code,
+                        now - Duration::days(self.config.backfill_days as i64),
+                        now - Duration::days(120),
+                    )?;
+                }
+            }
+            Some(staleness) => {
+                // We have some data - intelligently fill the gap
+                let gap_days = staleness.num_days();
+                
+                if gap_days <= 120 {
+                    // Gap is within IV API range - get high-resolution data
+                    println!("   Filling {}-day gap with instantaneous values (high-res)", gap_days);
+                    
+                    match self.backfill_instantaneous_values(site_code, gap_days as u64) {
+                        Ok(count) => {
+                            total_inserted += count;
+                            println!("   Fetched {} instantaneous readings", count);
+                        }
+                        Err(e) => {
+                            eprintln!("   Warning: IV backfill failed, falling back to daily values: {}", e);
+                            total_inserted += self.backfill_daily_values(
+                                site_code, 
+                                now - staleness, 
+                                now
+                            )?;
+                        }
+                    }
+                } else {
+                    // Gap is too large for IV API - use hybrid strategy
+                    println!("   Large gap ({} days) - using hybrid backfill", gap_days);
+                    
+                    // Get old data (beyond 120 days) as daily values
+                    let old_data_start = now - staleness;
+                    let old_data_end = now - Duration::days(120);
+                    
+                    if old_data_end > old_data_start {
+                        let dv_count = self.backfill_daily_values(site_code, old_data_start, old_data_end)?;
+                        total_inserted += dv_count;
+                        println!("   Fetched {} daily values for days {}-120", dv_count, gap_days);
+                    }
+                    
+                    // Get recent 120 days as instantaneous values (high resolution)
+                    match self.backfill_instantaneous_values(site_code, 120) {
+                        Ok(count) => {
+                            total_inserted += count;
+                            println!("   Fetched {} instantaneous readings (last 120 days)", count);
+                        }
+                        Err(e) => {
+                            eprintln!("   Warning: Recent IV backfill failed: {}", e);
+                            total_inserted += self.backfill_daily_values(
+                                site_code, 
+                                now - Duration::days(120), 
+                                now
+                            )?;
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(total_inserted)
     }
+    
+    /// Backfill using Daily Values API (coarse resolution, longer history)
+    fn backfill_daily_values(&mut self, site_code: &str, start_date: DateTime<Utc>, end_date: DateTime<Utc>) -> Result<usize, Box<dyn Error>> {
+        let start_date_str = start_date.format("%Y-%m-%d").to_string();
+        let end_date_str = end_date.format("%Y-%m-%d").to_string();
+        
+        let url = usgs::build_dv_url(
+            &[site_code],
+            &["00060", "00065"], // Discharge and stage
+            &start_date_str,
+            &end_date_str,
+        );
+        
+        println!("   Fetching daily values from {} to {}", start_date_str, end_date_str);
+        
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()?;
+        
+        let response = client.get(&url).send()?;
+        
+        if !response.status().is_success() {
+            return Err(format!("USGS API returned status {}", response.status()).into());
+        }
+        
+        let body = response.text()?;
+        
+        let readings = match usgs::parse_dv_response(&body) {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("   Warning: Failed to parse DV response: {}", e);
+                return Ok(0);
+            }
+        };
+        
+        self.warehouse_readings(&readings)
+    }
+    
+    /// Backfill using Instantaneous Values API (high resolution, limited history)
+    fn backfill_instantaneous_values(&mut self, site_code: &str, days: u64) -> Result<usize, Box<dyn Error>> {
+        // Convert days to ISO 8601 period format (e.g. P30D for 30 days)
+        let period = format!("P{}D", days);
+        
+        let url = usgs::build_iv_url(
+            &[site_code],
+            &["00060", "00065"], // Discharge and stage
+            &period,
+        );
+        
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()?;
+        
+        let response = client.get(&url).send()?;
+        
+        if !response.status().is_success() {
+            return Err(format!("USGS API returned status {}", response.status()).into());
+        }
+        
+        let body = response.text()?;
+        
+        // Use parse_iv_response_all to get ALL readings in the time period
+        let readings = usgs::parse_iv_response_all(&body)?;
+        
+        self.warehouse_readings(&readings)
+    }
+    
+    // ---------------------------------------------------------------------------
+    // CWMS Data Acquisition
+    // ---------------------------------------------------------------------------
+    
+    /// Poll a single CWMS location for latest data
+    pub fn poll_cwms_location(&mut self, location: &UsaceLocation) -> Result<usize, Box<dyn Error>> {
+        // Skip if no timeseries discovered
+        let discovered = match &location.discovered_timeseries {
+            Some(d) => d,
+            None => return Ok(0), // No timeseries available, skip polling
+        };
+        
+        let http_client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .build()?;
+        
+        let mut total_inserted = 0;
+        
+        // Fetch pool elevation if available
+        if let Some(ref ts_id) = discovered.pool_elevation {
+            match cwms::fetch_recent(&http_client, ts_id, &location.office, 4) {
+                Ok(timeseries) => {
+                    total_inserted += self.warehouse_cwms_timeseries(&timeseries)?;
+                }
+                Err(e) => {
+                    eprintln!("   Failed to fetch pool elevation for {}: {}", location.name, e);
+                }
+            }
+        }
+        
+        // Fetch tailwater elevation if available
+        if let Some(ref ts_id) = discovered.tailwater_elevation {
+            match cwms::fetch_recent(&http_client, ts_id, &location.office, 4) {
+                Ok(timeseries) => {
+                    total_inserted += self.warehouse_cwms_timeseries(&timeseries)?;
+                }
+                Err(e) => {
+                    eprintln!("   Failed to fetch tailwater elevation for {}: {}", location.name, e);
+                }
+            }
+        }
+        
+        // Fetch stage if available (for river gauges)
+        if let Some(ref ts_id) = discovered.stage {
+            match cwms::fetch_recent(&http_client, ts_id, &location.office, 4) {
+                Ok(timeseries) => {
+                    total_inserted += self.warehouse_cwms_timeseries(&timeseries)?;
+                }
+                Err(e) => {
+                    eprintln!("   Failed to fetch stage for {}: {}", location.name, e);
+                }
+            }
+        }
+        
+        Ok(total_inserted)
+    }
+    
+    /// Backfill CWMS location with historical data
+    pub fn backfill_cwms_location(&mut self, location: &UsaceLocation) -> Result<usize, Box<dyn Error>> {
+        // Skip if no timeseries discovered
+        let discovered = match &location.discovered_timeseries {
+            Some(d) => d,
+            None => return Ok(0), // No timeseries available, skip backfill
+        };
+        
+        let now = Utc::now();
+        
+        // Collect all timeseries IDs we need to backfill
+        let mut timeseries_to_backfill = Vec::new();
+        if let Some(ref ts_id) = discovered.pool_elevation {
+            timeseries_to_backfill.push((ts_id.clone(), "pool"));
+        }
+        if let Some(ref ts_id) = discovered.tailwater_elevation {
+            timeseries_to_backfill.push((ts_id.clone(), "tailwater"));
+        }
+        if let Some(ref ts_id) = discovered.stage {
+            timeseries_to_backfill.push((ts_id.clone(), "stage"));
+        }
+        
+        if timeseries_to_backfill.is_empty() {
+            return Ok(0);
+        }
+        
+        let mut total_inserted = 0;
+        
+        for (ts_id, param_type) in timeseries_to_backfill {
+            // Check staleness for this specific timeseries
+            let latest_data = self.check_cwms_staleness(&location.cwms_location)?;
+            
+            match latest_data {
+                None => {
+                    // No data at all - get last 120 days
+                    println!("   Empty database for {} ({}) - fetching CWMS data", location.name, param_type);
+                    
+                    let http_client = reqwest::blocking::Client::builder()
+                        .timeout(std::time::Duration::from_secs(30))
+                        .build()?;
+                    
+                    let start = (now - Duration::days(120)).naive_utc();
+                    let end = now.naive_utc();
+                    
+                    match cwms::fetch_historical(&http_client, &ts_id, &location.office, start, end) {
+                        Ok(timeseries) => {
+                            let inserted = self.warehouse_cwms_timeseries(&timeseries)?;
+                            total_inserted += inserted;
+                            println!("      Fetched {} {} readings", inserted, param_type);
+                        }
+                        Err(e) => {
+                            eprintln!("      Failed to fetch {}: {}", param_type, e);
+                        }
+                    }
+                }
+                Some(staleness) => {
+                    // We have some data - fill the gap if needed
+                    let gap_days = staleness.num_days();
+                    
+                    if gap_days > 1 {
+                        println!("   Filling {}-day CWMS gap for {} ({})", gap_days, location.name, param_type);
+                        
+                        let http_client = reqwest::blocking::Client::builder()
+                            .timeout(std::time::Duration::from_secs(30))
+                            .build()?;
+                        
+                        let start = (now - staleness).naive_utc();
+                        let end = now.naive_utc();
+                        
+                        match cwms::fetch_historical(&http_client, &ts_id, &location.office, start, end) {
+                            Ok(timeseries) => {
+                                let inserted = self.warehouse_cwms_timeseries(&timeseries)?;
+                                total_inserted += inserted;
+                                println!("      Fetched {} {} readings", inserted, param_type);
+                            }
+                            Err(e) => {
+                                eprintln!("      Failed to fetch {}: {}", param_type, e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(total_inserted)
+    }
+    
+    /// Warehouse CWMS timeseries into database (idempotent)
+    fn warehouse_cwms_timeseries(&mut self, timeseries: &[cwms::CwmsTimeseries]) -> Result<usize, Box<dyn Error>> {
+        let client = self.client.as_mut()
+            .ok_or("Daemon not initialized")?;
+        
+        let mut inserted = 0;
+        
+        for record in timeseries {
+            // Convert value to Decimal for PostgreSQL NUMERIC type
+            let value_decimal = rust_decimal::Decimal::from_f64_retain(record.value)
+                .ok_or_else(|| format!("Failed to convert value {} to decimal", record.value))?;
+            
+            // Use INSERT ... ON CONFLICT DO NOTHING for idempotency
+            let rows_affected = client.execute(
+                "INSERT INTO usace.cwms_timeseries 
+                 (location_id, timeseries_id, parameter_id, parameter_type, interval, duration, version,
+                  timestamp, value, unit, quality_code)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 ON CONFLICT (location_id, timestamp, parameter_id) DO NOTHING",
+                &[
+                    &record.location_id,
+                    &record.timeseries_id,
+                    &record.parameter_id,
+                    &"Inst",  // parameter_type - instantaneous
+                    &"15Minutes",  // interval
+                    &"0",  // duration
+                    &"Ccp-Rev",  // version
+                    &record.timestamp,
+                    &value_decimal,
+                    &record.unit,
+                    &record.quality_code,
+                ]
+            )?;
+            
+            inserted += rows_affected as usize;
+        }
+        
+        Ok(inserted)
+    }
+    
+    // ---------------------------------------------------------------------------
+    // ASOS Weather Data Warehousing
+    // ---------------------------------------------------------------------------
+    
+    /// Warehouse ASOS observations into database (idempotent)
+    fn warehouse_asos_observations(&mut self, observations: &[iem::AsosObservation]) -> Result<usize, Box<dyn Error>> {
+        let client = self.client.as_mut()
+            .ok_or("Daemon not initialized")?;
+        
+        let mut inserted = 0;
+        
+        for obs in observations {
+            // Convert numeric fields to Decimal for PostgreSQL
+            let temp_decimal = obs.temp_f.and_then(|v| Decimal::from_f64_retain(v));
+            let dewpoint_decimal = obs.dewpoint_f.and_then(|v| Decimal::from_f64_retain(v));
+            let humidity_decimal = obs.relative_humidity.and_then(|v| Decimal::from_f64_retain(v));
+            let wind_dir_decimal = obs.wind_direction_deg.and_then(|v| Decimal::from_f64_retain(v));
+            let wind_speed_decimal = obs.wind_speed_knots.and_then(|v| Decimal::from_f64_retain(v));
+            let wind_gust_decimal = obs.wind_gust_knots.and_then(|v| Decimal::from_f64_retain(v));
+            let precip_decimal = obs.precip_1hr_in.and_then(|v| Decimal::from_f64_retain(v));
+            let pressure_decimal = obs.pressure_mb.and_then(|v| Decimal::from_f64_retain(v));
+            let visibility_decimal = obs.visibility_mi.and_then(|v| Decimal::from_f64_retain(v));
+            
+            // Determine data source based on which fields are populated
+            let data_source = if obs.precip_1hr_in.is_some() { "IEM_CURRENT" } else { "IEM_1MIN" };
+            
+            let rows_affected = client.execute(
+                "INSERT INTO asos_observations 
+                 (station_id, observation_time, temp_f, dewpoint_f, relative_humidity,
+                  wind_direction_deg, wind_speed_knots, wind_gust_knots, precip_1hr_in,
+                  pressure_mb, visibility_mi, sky_condition, weather_codes, data_source)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                 ON CONFLICT (station_id, observation_time) DO NOTHING",
+                &[
+                    &obs.station_id,
+                    &obs.timestamp,
+                    &temp_decimal,
+                    &dewpoint_decimal,
+                    &humidity_decimal,
+                    &wind_dir_decimal,
+                    &wind_speed_decimal,
+                    &wind_gust_decimal,
+                    &precip_decimal,
+                    &pressure_decimal,
+                    &visibility_decimal,
+                    &obs.sky_condition,
+                    &obs.weather_codes,
+                    &data_source,
+                ]
+            )?;
+            
+            inserted += rows_affected as usize;
+        }
+        
+        Ok(inserted)
+    }
+    
+    /// Poll ASOS station for recent observations
+    fn poll_asos_station(&mut self, station_id: &str) -> Result<Vec<iem::AsosObservation>, Box<dyn Error>> {
+        let http_client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .build()?;
+        
+        // Fetch last 4 hours for recent poll
+        let observations = iem::fetch_recent_precip(&http_client, station_id, 4)?;
+        
+        Ok(observations)
+    }
+    
+    /// Backfill ASOS historical data for a station
+    fn backfill_asos_station(&mut self, station_id: &str, days: i64) -> Result<usize, Box<dyn Error>> {
+        let http_client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()?;
+        
+        let hours = days * 24;
+        let observations = iem::fetch_recent_precip(&http_client, station_id, hours)?;
+        
+        self.warehouse_asos_observations(&observations)
+    }
+    
+    // ---------------------------------------------------------------------------
+    // USGS Data Warehousing
+    // ---------------------------------------------------------------------------
     
     /// Poll a single station for latest data
     pub fn poll_station(&mut self, site_code: &str) -> Result<Vec<GaugeReading>, Box<dyn Error>> {
-        // TODO: Implement polling logic
-        // 1. Build USGS IV API URL for last 4 hours
-        // 2. Fetch data
-        // 3. Parse response
-        // 4. Return readings (caller will warehouse them)
+        // Build URL for instantaneous values (last 4 hours to ensure we get recent data)
+        // USGS updates IV data every 15-60 minutes depending on the station
+        let url = usgs::build_iv_url(
+            &[site_code],
+            &["00060", "00065"], // Discharge and stage
+            "PT4H", // Last 4 hours
+        );
         
-        let _ = site_code;
-        unimplemented!("poll_station: fetch latest readings from USGS API")
+        // Fetch data from USGS API
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(15))
+            .build()?;
+        
+        let response = client.get(&url).send()?;
+        
+        if !response.status().is_success() {
+            return Err(format!("USGS API returned status {}", response.status()).into());
+        }
+        
+        let body = response.text()?;
+        
+        // Parse response - note this returns the most recent value per parameter
+        let readings = usgs::parse_iv_response(&body)?;
+        
+        Ok(readings)
     }
     
     /// Warehouse readings into database (idempotent)
@@ -156,6 +690,23 @@ impl Daemon {
         let mut inserted = 0;
         
         for reading in readings {
+            // Parse datetime string to DateTime<Utc>
+            // Try RFC3339 first (for instantaneous values with timezone)
+            let reading_time = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&reading.datetime) {
+                dt.with_timezone(&Utc)
+            } else {
+                // Fall back to NaiveDateTime for daily values (no timezone)
+                // Assume local time is UTC for daily values
+                let naive = chrono::NaiveDateTime::parse_from_str(&reading.datetime, "%Y-%m-%dT%H:%M:%S%.3f")
+                    .or_else(|_| chrono::NaiveDateTime::parse_from_str(&reading.datetime, "%Y-%m-%d"))
+                    .map_err(|e| format!("Failed to parse datetime '{}': {}", reading.datetime, e))?;
+                chrono::DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc)
+            };
+            
+            // Convert value to Decimal for PostgreSQL NUMERIC type
+            let value_decimal = rust_decimal::Decimal::from_f64_retain(reading.value)
+                .ok_or_else(|| format!("Failed to convert value {} to decimal", reading.value))?;
+            
             // Use INSERT ... ON CONFLICT DO NOTHING for idempotency
             let rows_affected = client.execute(
                 "INSERT INTO usgs_raw.gauge_readings 
@@ -166,8 +717,8 @@ impl Daemon {
                     &reading.site_code,
                     &reading.parameter_code,
                     &reading.unit,
-                    &reading.value,
-                    &reading.datetime,
+                    &value_decimal,
+                    &reading_time,
                     &reading.qualifier,
                 ]
             )?;
@@ -224,6 +775,7 @@ impl Daemon {
     pub fn poll_all_stations(&mut self) -> Result<HashMap<String, usize>, Box<dyn Error>> {
         let mut results = HashMap::new();
         
+        // Poll USGS stations
         for station in &self.stations.clone() {
             match self.poll_station(&station.site_code) {
                 Ok(readings) => {
@@ -236,12 +788,39 @@ impl Daemon {
                         .max();
                     
                     self.update_monitoring_state(&station.site_code, latest)?;
-                    results.insert(station.site_code.clone(), inserted);
+                    results.insert(format!("USGS:{}", station.site_code), inserted);
                 }
                 Err(e) => {
-                    eprintln!("Failed to poll {}: {}", station.site_code, e);
+                    eprintln!("Failed to poll USGS {}: {}", station.site_code, e);
                     self.record_failure(&station.site_code)?;
-                    results.insert(station.site_code.clone(), 0);
+                    results.insert(format!("USGS:{}", station.site_code), 0);
+                }
+            }
+        }
+        
+        // Poll CWMS locations
+        for location in &self.cwms_locations.clone() {
+            match self.poll_cwms_location(&location) {
+                Ok(inserted) => {
+                    results.insert(format!("CWMS:{}", location.name), inserted);
+                }
+                Err(e) => {
+                    eprintln!("Failed to poll CWMS {}: {}", location.name, e);
+                    results.insert(format!("CWMS:{}", location.name), 0);
+                }
+            }
+        }
+        
+        // Poll ASOS stations (based on priority)
+        for location in &self.asos_locations.clone() {
+            match self.poll_asos_station(&location.station_id) {
+                Ok(observations) => {
+                    let inserted = self.warehouse_asos_observations(&observations)?;
+                    results.insert(format!("ASOS:{}", location.station_id), inserted);
+                }
+                Err(e) => {
+                    eprintln!("Failed to poll ASOS {}: {}", location.station_id, e);
+                    results.insert(format!("ASOS:{}", location.station_id), 0);
                 }
             }
         }
@@ -253,7 +832,8 @@ impl Daemon {
     pub fn run(&mut self) -> Result<(), Box<dyn Error>> {
         println!("🚀 Starting daemon loop...");
         println!("   Poll interval: {} minutes", self.config.poll_interval_minutes);
-        println!("   Monitoring {} stations", self.stations.len());
+        println!("   Monitoring {} USGS stations + {} CWMS locations + {} ASOS stations", 
+                self.stations.len(), self.cwms_locations.len(), self.asos_locations.len());
         
         loop {
             let start = Utc::now();
@@ -261,8 +841,11 @@ impl Daemon {
             match self.poll_all_stations() {
                 Ok(results) => {
                     let total: usize = results.values().sum();
-                    println!("✓ Poll complete: {} new readings across {} stations", 
-                            total, results.len());
+                    let usgs_count = results.iter().filter(|(k, _)| k.starts_with("USGS:")).count();
+                    let cwms_count = results.iter().filter(|(k, _)| k.starts_with("CWMS:")).count();
+                    let asos_count = results.iter().filter(|(k, _)| k.starts_with("ASOS:")).count();
+                    println!("✓ Poll complete: {} new readings ({} USGS, {} CWMS, {} ASOS)", 
+                            total, usgs_count, cwms_count, asos_count);
                 }
                 Err(e) => {
                     eprintln!("✗ Poll error: {}", e);

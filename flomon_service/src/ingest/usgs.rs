@@ -269,6 +269,92 @@ pub fn parse_iv_response(json: &str) -> Result<Vec<GaugeReading>, NwisError> {
     Ok(readings)
 }
 
+/// Parses a USGS IV API JSON response into ALL readings (not just latest).
+/// Similar to parse_dv_response but for instantaneous values.
+/// Use this for backfilling gaps with high-resolution data.
+pub fn parse_iv_response_all(json: &str) -> Result<Vec<GaugeReading>, NwisError> {
+    let response: IvResponse = serde_json::from_str(json)
+        .map_err(|e| NwisError::ParseError(format!("JSON deserialization failed: {}", e)))?;
+
+    if response.value.time_series.is_empty() {
+        return Err(NwisError::NoDataAvailable(
+            "No timeSeries entries in response".to_string(),
+        ));
+    }
+
+    let mut all_readings = Vec::new();
+
+    for series in response.value.time_series {
+        let site_code = series
+            .source_info
+            .site_code
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing siteCode".to_string()))?
+            .value
+            .clone();
+
+        let site_name = series.source_info.site_name.clone();
+
+        let parameter_code = series
+            .variable
+            .variable_code
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing variableCode".to_string()))?
+            .value
+            .clone();
+
+        let unit = series.variable.unit.unit_code.clone();
+        let no_data_value = series.variable.no_data_value;
+
+        let values_wrapper = series
+            .values
+            .first()
+            .ok_or_else(|| NwisError::ParseError("Missing values array".to_string()))?;
+
+        if values_wrapper.value.is_empty() {
+            continue;
+        }
+
+        // Process ALL values (not just the most recent)
+        for entry in &values_wrapper.value {
+            let value: f64 = match entry.value.parse() {
+                Ok(v) => v,
+                Err(_) => continue, // Skip unparseable values
+            };
+
+            // Skip sentinel values
+            if (value - no_data_value).abs() < 0.1 {
+                continue;
+            }
+
+            let qualifier = entry
+                .qualifiers
+                .first()
+                .map(|s| s.as_str())
+                .unwrap_or("P")
+                .to_string();
+
+            all_readings.push(GaugeReading {
+                site_code: site_code.clone(),
+                site_name: site_name.clone(),
+                parameter_code: parameter_code.clone(),
+                unit: unit.clone(),
+                value,
+                datetime: entry.date_time.clone(),
+                qualifier: qualifier.clone(),
+            });
+        }
+    }
+
+    if all_readings.is_empty() {
+        return Err(NwisError::NoDataAvailable(
+            "All timeSeries entries were empty or contained sentinel values".to_string(),
+        ));
+    }
+
+    Ok(all_readings)
+}
+
 /// Parses a USGS Daily Values (DV) API JSON response into a flat list
 /// of `GaugeReading`s, returning ALL daily values in the time range.
 ///
