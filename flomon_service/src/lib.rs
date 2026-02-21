@@ -7,6 +7,7 @@
 /// ├── model       — shared data types (GaugeReading, FloodThresholds, NwisError, …)
 /// ├── config      — station registry configuration loader (stations.toml)
 /// ├── stations    — USGS site code registry with NWS flood stage thresholds
+/// ├── daemon      — main daemon loop (startup, backfill, polling, warehousing)
 /// ├── ingest
 /// │   ├── usgs    — USGS NWIS IV API: URL construction + JSON parsing
 /// │   └── fixtures (test only) — representative API response payloads
@@ -18,9 +19,11 @@
 ///     └── grouping   — organizes flat readings into per-site structs
 /// ```
 
+/// Public modules
 pub mod alert;
 pub mod analysis;
 pub mod config;
+pub mod daemon;
 pub mod db;
 pub mod ingest;
 pub mod model;
