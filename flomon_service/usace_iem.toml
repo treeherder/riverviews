@@ -31,15 +31,8 @@ name            = "Illinois River at Peoria Lock and Dam"
 river_mile      = 157.6
 pool_elevation_target_ft_ngvd29 = 447.0
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage"]
-relevance       = "PRIMARY — directly controls Upper Peoria Lake level. Pool elevation \
-                   here is the most operationally important USACE reading for your \
-                   property. When pool rises significantly above 447.0 ft NGVD29, \
-                   backwater flooding on the east bank (Sunset Drive / Woodford Co.) \
-                   begins. Wicket dam — lays flat during major floods, removing pool \
-                   control and allowing the river to run free."
-flood_note      = "Wicket dam operation: when wickets are laid down, pool is no longer \
-                   managed and stage is governed entirely by river flow and Mississippi \
-                   backwater."
+relevance = "PRIMARY — directly controls Upper Peoria Lake level. Pool elevation here is the most operationally important USACE reading for your property. When pool rises significantly above 447.0 ft NGVD29, backwater flooding on the east bank (Sunset Drive / Woodford Co.) begins. Wicket dam — lays flat during major floods, removing pool control and allowing the river to run free."
+flood_note = "Wicket dam operation: when wickets are laid down, pool is no longer managed and stage is governed entirely by river flow and Mississippi backwater."
 
 [[usace_stations]]
 shef_id         = "IL06"
@@ -49,11 +42,7 @@ office          = "MVR"
 name            = "Illinois River at Starved Rock Lock and Dam"
 river_mile      = 231.0
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage", "met"]
-relevance       = "HIGH UPSTREAM WARNING — closest major upstream structure to Peoria \
-                   on the main stem. Rising pool or tailwater here gives 24–48 hour \
-                   lead time for Peoria. Also has a MET (meteorological) station \
-                   (SHEF: SRDI2) monitoring local precip and temperature — useful for \
-                   correlating rainfall with flow response in the Starved Rock reach."
+relevance = "HIGH UPSTREAM WARNING — closest major upstream structure to Peoria on the main stem. Rising pool or tailwater here gives 24–48 hour lead time for Peoria. Also has a MET (meteorological) station (SHEF: SRDI2) monitoring local precip and temperature — useful for correlating rainfall with flow response in the Starved Rock reach."
 
 [[usace_stations]]
 shef_id         = "IL05"
@@ -64,11 +53,7 @@ name            = "Illinois River at Marseilles Lock and Dam"
 river_mile      = 247.0
 tailwater_river_mile = 244.5
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage"]
-relevance       = "UPSTREAM WARNING — approximately 90 miles upstream. Marseilles pool \
-                   and tailwater rising indicates a significant pulse is moving down \
-                   the main stem. 36–60 hour lead time for Peoria depending on flow \
-                   velocity. Marseilles Canal bypasses the dam; tailwater gauge at \
-                   RM 244.5 is the free-flow reference."
+relevance = "UPSTREAM WARNING — approximately 90 miles upstream. Marseilles pool and tailwater rising indicates a significant pulse is moving down the main stem. 36–60 hour lead time for Peoria depending on flow velocity. Marseilles Canal bypasses the dam; tailwater gauge at RM 244.5 is the free-flow reference."
 
 [[usace_stations]]
 shef_id         = "IL04"
@@ -78,12 +63,7 @@ office          = "MVR"
 name            = "Illinois River at Dresden Island Lock and Dam"
 river_mile      = 271.5
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage", "met"]
-relevance       = "CONFLUENCE MONITOR — located at the junction of the Kankakee and \
-                   Des Plaines rivers where the Illinois River is born. Pool elevation \
-                   here reflects combined input from the entire Chicago metro drainage \
-                   plus the Kankakee basin. A critical early indicator when large \
-                   volumes are entering the system from the northeast. MET station \
-                   (SHEF: DRSI2) available."
+relevance = "CONFLUENCE MONITOR — located at the junction of the Kankakee and Des Plaines rivers where the Illinois River is born. Pool elevation here reflects combined input from the entire Chicago metro drainage plus the Kankakee basin. A critical early indicator when large volumes are entering the system from the northeast. MET station (SHEF: DRSI2) available."
 
 [[usace_stations]]
 shef_id         = "IL03"
@@ -93,10 +73,7 @@ office          = "MVR"
 name            = "Illinois River at Brandon Road Lock and Dam"
 river_mile      = 285.9
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage", "met"]
-relevance       = "CHICAGO METRO OUTFLOW MONITOR — together with Lockport, this is \
-                   your window into what the Chicago metropolitan area is contributing \
-                   to the system. MWRD release events appear here before propagating \
-                   downstream. MET station (SHEF: JOLI2) available."
+relevance = "CHICAGO METRO OUTFLOW MONITOR — together with Lockport, this is your window into what the Chicago metropolitan area is contributing to the system. MWRD release events appear here before propagating downstream. MET station (SHEF: JOLI2) available."
 
 [[usace_stations]]
 shef_id         = "IL02"
@@ -107,13 +84,7 @@ name            = "Chicago Sanitary and Ship Canal at Lockport Lock and Dam"
 river_mile      = 291.1
 datum_note      = "Pool elevation referenced to IGLD; add 1.3 ft to convert to NGVD29"
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage"]
-relevance       = "LAKE MICHIGAN INFLOW CONTROL POINT — the upstream terminus of the \
-                   Illinois Waterway system. Controls flow from the Chicago Sanitary \
-                   and Ship Canal into the river system. MWRD operates the powerhouse \
-                   here. When Lake Michigan levels are high and MWRD is releasing \
-                   heavily during storm events, elevated readings here will propagate \
-                   down through Brandon Road, Dresden Island, and eventually Peoria \
-                   over the following days."
+relevance = "LAKE MICHIGAN INFLOW CONTROL POINT — the upstream terminus of the Illinois Waterway system. Controls flow from the Chicago Sanitary and Ship Canal into the river system. MWRD operates the powerhouse here. When Lake Michigan levels are high and MWRD is releasing heavily during storm events, elevated readings here will propagate down through Brandon Road, Dresden Island, and eventually Peoria over the following days."
 
 
 # =============================================================================
@@ -129,17 +100,8 @@ office          = "MVR"
 name            = "Illinois River at New LaGrange Lock and Dam"
 river_mile      = 80.2
 data_types      = ["pool_elevation", "tailwater_elevation", "lockage"]
-relevance       = "CRITICAL BACKWATER INDICATOR — LaGrange is the last lock and dam \
-                   before the Mississippi confluence at Grafton (RM 0). When the \
-                   Mississippi is flooding, backwater pushes up through LaGrange and \
-                   can elevate pool levels all the way to Peoria. This is the \
-                   'floods from the bottom up' mechanism. Monitor LaGrange tailwater \
-                   carefully — when tailwater approaches or exceeds pool elevation, \
-                   the dam has lost hydraulic control and Mississippi backwater is \
-                   dominant. This is also a wicket dam and lays flat during major floods."
-flood_note      = "LaGrange tailwater == Mississippi backwater proxy. When LaGrange \
-                   tailwater rises sharply without corresponding upstream flow \
-                   increase, Mississippi is driving the event."
+relevance = "CRITICAL BACKWATER INDICATOR — LaGrange is the last lock and dam before the Mississippi confluence at Grafton (RM 0). When the Mississippi is flooding, backwater pushes up through LaGrange and can elevate pool levels all the way to Peoria. This is the 'floods from the bottom up' mechanism. Monitor LaGrange tailwater carefully — when tailwater approaches or exceeds pool elevation, the dam has lost hydraulic control and Mississippi backwater is dominant. This is also a wicket dam and lays flat during major floods."
+flood_note = "LaGrange tailwater == Mississippi backwater proxy. When LaGrange tailwater rises sharply without corresponding upstream flow increase, Mississippi is driving the event."
 
 
 # =============================================================================
@@ -154,35 +116,22 @@ office          = "MVS"
 name            = "Mississippi River at Grafton, IL"
 river_mile_above_ohio = 218.0
 data_types      = ["stage", "discharge"]
-relevance       = "BACKWATER ORIGIN — located 0.2 miles downstream from the Illinois \
-                   River confluence. This is the most direct indicator of Mississippi \
-                   River stage driving backwater into the Illinois. When Grafton stage \
-                   rises above approximately 20 ft, backwater begins affecting LaGrange \
-                   pool. Above ~25 ft, backwater influence is felt at Peoria. \
-                   Operated by MVS (St. Louis District) in coordination with USGS."
-flood_note      = "Cross-reference with USGS 05587450 (Illinois River at Grafton) \
-                   for combined flow context."
+relevance = "BACKWATER ORIGIN — located 0.2 miles downstream from the Illinois River confluence. This is the most direct indicator of Mississippi River stage driving backwater into the Illinois. When Grafton stage rises above approximately 20 ft, backwater begins affecting LaGrange pool. Above ~25 ft, backwater influence is felt at Peoria. Operated by MVS (St. Louis District) in coordination with USGS."
+flood_note = "Cross-reference with USGS 05587450 (Illinois River at Grafton) for combined flow context."
 
 [[usace_stations]]
 name            = "Mississippi River at Alton, IL"
 shef_id         = "ALTI2"
 office          = "MVS"
 data_types      = ["stage", "discharge"]
-relevance       = "UPSTREAM MISSISSIPPI REFERENCE — Alton is upstream of Grafton and \
-                   gives 6–12 hour lead time on what Grafton stage will do. When Alton \
-                   is at major flood stage, Grafton will follow and backwater into the \
-                   Illinois is almost certain. Useful for extending your backwater \
-                   alert lead time."
+relevance = "UPSTREAM MISSISSIPPI REFERENCE — Alton is upstream of Grafton and gives 6–12 hour lead time on what Grafton stage will do. When Alton is at major flood stage, Grafton will follow and backwater into the Illinois is almost certain. Useful for extending your backwater alert lead time."
 
 [[usace_stations]]
 name            = "Mississippi River at Hannibal, MO"
 shef_id         = "HNLM7"
 office          = "MVS"
 data_types      = ["stage", "discharge"]
-relevance       = "EXTENDED BACKWATER LEAD TIME — Hannibal is ~120 miles upstream of \
-                   Grafton. Major flooding at Hannibal provides 2–4 day advance \
-                   warning that a large Mississippi pulse is approaching the Illinois \
-                   confluence. Useful for early alerting during major river events."
+relevance = "EXTENDED BACKWATER LEAD TIME — Hannibal is ~120 miles upstream of Grafton. Major flooding at Hannibal provides 2–4 day advance warning that a large Mississippi pulse is approaching the Illinois confluence. Useful for early alerting during major river events."
 
 
 # =============================================================================
@@ -236,9 +185,7 @@ name        = "Peoria International Airport"
 latitude    = 40.664
 longitude   = -89.693
 data_types  = ["precipitation", "temperature", "wind", "pressure", "humidity"]
-relevance   = "PRIMARY LOCAL PRECIP — closest ASOS station to Upper Peoria Lake. \
-               Use for current conditions and local rainfall accumulation. \
-               1-minute interval data available from 2000 onward."
+relevance = "PRIMARY LOCAL PRECIP — closest ASOS station to Upper Peoria Lake. Use for current conditions and local rainfall accumulation. 1-minute interval data available from 2000 onward."
 
 [[iem_asos_stations]]
 station_id  = "KBMI"
@@ -246,9 +193,7 @@ name        = "Central Illinois Regional Airport (Bloomington-Normal)"
 latitude    = 40.477
 longitude   = -88.916
 data_types  = ["precipitation", "temperature"]
-relevance   = "MACKINAW RIVER BASIN PRECIP — Bloomington sits in the upper Mackinaw \
-               River watershed. Rainfall here is a leading indicator of Mackinaw River \
-               rise, which feeds directly into the Illinois near Pekin."
+relevance = "MACKINAW RIVER BASIN PRECIP — Bloomington sits in the upper Mackinaw River watershed. Rainfall here is a leading indicator of Mackinaw River rise, which feeds directly into the Illinois near Pekin."
 
 [[iem_asos_stations]]
 station_id  = "KSPI"
@@ -256,9 +201,7 @@ name        = "Abraham Lincoln Capital Airport (Springfield)"
 latitude    = 39.844
 longitude   = -89.678
 data_types  = ["precipitation", "temperature"]
-relevance   = "SOUTHERN BASIN REFERENCE — useful for tracking storm systems moving \
-               northeast across the basin. Heavy Springfield rainfall often precedes \
-               Sangamon River rises."
+relevance = "SOUTHERN BASIN REFERENCE — useful for tracking storm systems moving northeast across the basin. Heavy Springfield rainfall often precedes Sangamon River rises."
 
 [[iem_asos_stations]]
 station_id  = "KGBG"
@@ -266,8 +209,7 @@ name        = "Galesburg Airport"
 latitude    = 40.938
 longitude   = -90.431
 data_types  = ["precipitation", "temperature"]
-relevance   = "SPOON RIVER BASIN PRECIP — Galesburg is in the upper Spoon River \
-               watershed. Useful for monitoring contribution from that tributary."
+relevance = "SPOON RIVER BASIN PRECIP — Galesburg is in the upper Spoon River watershed. Useful for monitoring contribution from that tributary."
 
 [[iem_asos_stations]]
 station_id  = "KORD"
@@ -275,9 +217,7 @@ name        = "Chicago O'Hare International Airport"
 latitude    = 41.980
 longitude   = -87.904
 data_types  = ["precipitation", "temperature"]
-relevance   = "CHICAGO METRO PRECIP — heavy rainfall at O'Hare drives MWRD releases \
-               through the CAWS, which appear at Lockport and Brandon Road 6–12 hours \
-               later. A useful early proxy for Chicago-origin flow increases."
+relevance = "CHICAGO METRO PRECIP — heavy rainfall at O'Hare drives MWRD releases through the CAWS, which appear at Lockport and Brandon Road 6–12 hours later. A useful early proxy for Chicago-origin flow increases."
 
 [[iem_asos_stations]]
 station_id  = "KPWK"
@@ -285,15 +225,12 @@ name        = "Chicago Executive Airport (Wheeling)"
 latitude    = 42.114
 longitude   = -87.901
 data_types  = ["precipitation"]
-relevance   = "SECONDARY CHICAGO METRO PRECIP — northwest suburbs, feeds the Des \
-               Plaines River drainage."
+relevance = "SECONDARY CHICAGO METRO PRECIP — northwest suburbs, feeds the Des Plaines River drainage."
 
 
 # IEM GRIDDED DATA (IEMRE) — point queries for any lat/lon in the basin
 [iem_iemre]
-description = "Gridded reanalysis — query any lat/lon for daily or hourly precip, \
-               temperature, and derived variables. Best source for continuous \
-               historical precip record at your specific property location."
+description = "Gridded reanalysis — query any lat/lon for daily or hourly precip, temperature, and derived variables. Best source for continuous historical precip record at your specific property location."
 endpoint_daily   = "https://mesonet.agron.iastate.edu/iemre/daily/{YYYY-MM-DD}/{LAT}/{LON}/json"
 endpoint_hourly  = "https://mesonet.agron.iastate.edu/iemre/hourly/{YYYY-MM-DD}/{LAT}/{LON}/json"
 endpoint_multiday = "https://mesonet.agron.iastate.edu/iemre/multiday/{date1}/{date2}/{LAT}/{LON}/json"
@@ -303,9 +240,7 @@ update_frequency = "~10 minutes after each hour (real-time)"
 variables        = ["high_tmpf", "low_tmpf", "precip", "snow", "snowd", "avg_sknt"]
 
 [iem_mrms]
-description = "Multi-Radar Multi-Sensor (MRMS) quantitative precipitation estimates \
-               served as WMS layers and downloadable rasters. Use for basin-wide \
-               rainfall visualization on your dashboard."
+description = "Multi-Radar Multi-Sensor (MRMS) quantitative precipitation estimates served as WMS layers and downloadable rasters. Use for basin-wide rainfall visualization on your dashboard."
 wms_endpoint = "https://mesonet.agron.iastate.edu/cgi-bin/wms/us/mrms.cgi"
 layers       = [
     "mrms_p1h",   # 1-hour QPE accumulation
@@ -316,46 +251,9 @@ layers       = [
 raster_download = "https://mesonet.agron.iastate.edu/rainfall/mrms2img.py?year=YYYY&month=MM&day=DD&hour=HH&period=24"
 
 [iem_nws_archive]
-description = "Archive of all NWS text products including River Statements (RVS), \
-               Flood Watches/Warnings (FFA/FFW), and Hydrologic Outlooks (ESF) \
-               from NWS Peoria (office: ILX). Use for historical event context \
-               and damage narrative in your flood event database."
+description = "Archive of all NWS text products including River Statements (RVS), Flood Watches/Warnings (FFA/FFW), and Hydrologic Outlooks (ESF) from NWS Peoria (office: ILX). Use for historical event context and damage narrative in your flood event database."
 endpoint     = "https://mesonet.agron.iastate.edu/api/1/nwstext_search.json?pil=RVS&cccc=KILX"
 office       = "KILX"  # NWS Peoria
 useful_pils  = ["RVS", "FFA", "FFW", "ESF", "HYD", "LSR"]
 
 
-# =============================================================================
-# SECTION 6: DATABASE RELEVANCE SUMMARY
-# Priority ranking for polling frequency in your monitoring service.
-# =============================================================================
-
-# POLL EVERY 15 MINUTES (real-time flood monitoring):
-#   - Peoria Lock Pool (IL07P)         — direct pool control for your property
-#   - LaGrange Pool + Tailwater (IL08) — backwater detection
-#   - Grafton Mississippi stage        — backwater origin
-#   - USGS Kingston Mines (05568500)   — primary flow gauge
-#   - USGS Peoria pool (05567500)      — cross-reference
-#   - KPIA ASOS precipitation          — local rainfall
-
-# POLL EVERY HOUR (early warning):
-#   - Starved Rock Pool (IL06)         — upstream main stem
-#   - Marseilles Pool (IL05)           — upstream main stem
-#   - USGS Chillicothe (05568000)      — upstream warning
-#   - USGS Mackinaw River (05568580)   — critical local tributary
-#   - Alton Mississippi stage          — backwater lead time
-#   - IEMRE hourly precip at property coords
-
-# POLL EVERY 6 HOURS (basin context):
-#   - Dresden Island Pool (IL04)       — confluence monitor
-#   - Brandon Road Pool (IL03)         — Chicago metro contribution
-#   - Lockport Pool (IL02)             — Lake Michigan inflow
-#   - USGS Henry (05557000)            — extended upstream warning
-#   - USGS Spoon River (05570000)      — tributary contribution
-#   - Hannibal Mississippi stage       — extended backwater lead time
-#   - MRMS 72-hour QPE raster          — basin saturation
-
-# POLL DAILY (historical / analytical):
-#   - IEMRE daily precip for all basin ASOS stations
-#   - IEM NWS text product archive (RVS, FFA from KILX)
-#   - USGS NWIS peak flow updates

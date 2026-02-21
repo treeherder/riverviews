@@ -1,1 +1,612 @@
-#   active as highest severity.z
+# Geospatial Sensor Groups — Illinois River Basin Flood Monitor
+#
+# CONCEPT:
+#   Each "zone" represents a geographic region of hydrological resolution.
+#   A zone aggregates all sensors whose readings are physically meaningful
+#   for understanding current and near-future conditions in that region.
+#
+#   Zones are ordered from your property outward in terms of spatial and
+#   temporal proximity. The further the zone from Peoria, the longer the
+#   lead time it represents.
+#
+#   Within each zone, sensors are labeled by their ROLE:
+#     "direct"     — measures conditions at or within the zone itself
+#     "boundary"   — measures what is entering or leaving the zone
+#     "precip"     — measures rainfall over the zone's catchment
+#     "proxy"      — not in the zone but strongly correlated to zone conditions
+#
+# TOPOLOGY OF YOUR BASIN (simplified):
+#
+#   Lake Michigan
+#       │
+#   [ZONE 6: Chicago / CAWS]
+#       │ Des Plaines + Chicago Sanitary & Ship Canal
+#       │
+#   [ZONE 5: Upper Illinois — Confluence to Starved Rock]
+#       │ Kankakee joins here (Dresden Island)
+#       │
+#   [ZONE 4: Mid Illinois — Starved Rock to Henry]
+#       │ Vermilion River joins here
+#       │
+#   [ZONE 3: Mackinaw / Local Tributaries]
+#       │ Mackinaw River joins near Pekin
+#       │ Spoon River joins above Havana
+#       │
+#   [ZONE 2: UPPER PEORIA LAKE — YOUR PROPERTY] ← primary zone
+#       │
+#   [ZONE 1: Lower Illinois / Backwater Interface]
+#       │
+#   [ZONE 0: Mississippi River — Backwater Source]
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# =============================================================================
+# ZONE 0: Mississippi River — Backwater Source
+#
+# Geographic extent: Mississippi River from Hannibal, MO to Grafton, IL
+# Hydrological role: Source of backwater that can flood the Illinois River
+#                    system from the bottom up, raising pool levels at Peoria
+#                    even without elevated upstream flows.
+# Lead time to your property: 2–5 days (Hannibal), 12–36 hours (Grafton)
+# Alert condition: Mississippi stage at Grafton > ~20 ft begins backwater
+#                  influence on LaGrange; > ~25 ft reaches Peoria pool.
+# =============================================================================
+
+[zones.zone_0]
+name        = "Mississippi River — Backwater Source"
+description = "The Mississippi River between Hannibal and Grafton. When in \
+               flood, it pushes water back up the Illinois River from the \
+               confluence at Grafton. This is the 'bottom-up' flood mechanism \
+               — your property can flood at Peoria even when upstream Illinois \
+               River flows are moderate, if the Mississippi is high enough to \
+               prevent the Illinois from draining."
+
+[[zones.zone_0.sensors]]
+id          = "HNLM7"
+source      = "USACE/MVS"
+type        = "stage"
+role        = "boundary"
+location    = "Mississippi River at Hannibal, MO"
+lat         = 39.708
+lon         = -91.358
+relevance   = "Extended lead time (2–4 days). A major crest at Hannibal will \
+               reach Grafton and begin affecting Peoria pool within days. \
+               Trigger early-warning alert when Hannibal exceeds 22 ft."
+
+[[zones.zone_0.sensors]]
+id          = "ALTI2"
+source      = "USACE/MVS"
+type        = "stage"
+role        = "boundary"
+location    = "Mississippi River at Alton, IL"
+lat         = 38.889
+lon         = -90.184
+relevance   = "Medium lead time (12–24 hours to Grafton). Confirms whether a \
+               Hannibal crest is intensifying or attenuating as it moves south."
+
+[[zones.zone_0.sensors]]
+id          = "GRFI2"
+usgs_id     = "05587450"
+source      = "USACE/MVS + USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Mississippi River at Grafton, IL (Illinois River confluence)"
+lat         = 38.967
+lon         = -90.432
+relevance   = "CRITICAL — this is the backwater origin point. Stage here \
+               directly sets the lower boundary condition for the entire \
+               Illinois River system. Cross-reference USACE stage with USGS \
+               discharge at 05587450. When Grafton rises, watch LaGrange \
+               tailwater for confirmation that backwater is propagating upstream."
+
+
+# =============================================================================
+# ZONE 1: Lower Illinois River — Backwater Interface
+#
+# Geographic extent: Illinois River from Grafton (RM 0) to Peoria (RM 157)
+# Key structures: LaGrange L&D (RM 80), Peoria L&D (RM 157)
+# Hydrological role: The reach that transmits backwater from the Mississippi
+#                    northward toward Peoria, and transmits Peoria outflow
+#                    southward. LaGrange is the critical control structure.
+# Lead time to your property: 6–24 hours (LaGrange), 0–6 hours (Peoria L&D)
+# =============================================================================
+
+[zones.zone_1]
+name        = "Lower Illinois River — Backwater Interface"
+description = "The reach between the Mississippi confluence and Peoria. \
+               LaGrange Lock and Dam is the key diagnostic structure — when \
+               its tailwater approaches its pool elevation, the Mississippi \
+               is hydraulically controlling this entire reach and backwater \
+               is propagating toward Peoria. Havana gauge (USGS 05570000 area) \
+               sits in this reach and captures combined flow from Spoon River."
+
+[[zones.zone_1.sensors]]
+id          = "IL08P"
+shef_id     = "IL08"
+cwms_location = "LaGrange-Pool"
+source      = "USACE/MVR"
+type        = "pool_elevation"
+role        = "direct"
+location    = "New LaGrange Lock and Dam (RM 80.2)"
+lat         = 40.033
+lon         = -90.350
+relevance   = "PRIMARY BACKWATER DIAGNOSTIC — pool elevation here should be \
+               near 440.0 ft NGVD29 under normal conditions. When tailwater \
+               rises toward pool elevation, backwater from the Mississippi is \
+               dominant. This is a wicket dam and lays flat during major floods."
+
+[[zones.zone_1.sensors]]
+id          = "IL08TW"
+shef_id     = "IL08"
+cwms_location = "LaGrange-TW"
+source      = "USACE/MVR"
+type        = "tailwater_elevation"
+role        = "boundary"
+location    = "New LaGrange Lock and Dam tailwater (RM 80.2)"
+lat         = 40.033
+lon         = -90.350
+relevance   = "BACKWATER CONFIRMATION — the pool-to-tailwater differential \
+               is your single best real-time indicator of whether the \
+               Mississippi is controlling Illinois River levels. \
+               Differential < 1.0 ft = backwater dominant."
+
+[[zones.zone_1.sensors]]
+usgs_id     = "05570000"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Spoon River at Seville, IL"
+lat         = 40.491
+lon         = -90.038
+relevance   = "TRIBUTARY INPUT — Spoon River drains a large watershed to the \
+               west and joins the Illinois near Havana in this reach. Rising \
+               Spoon River adds to lower Illinois flow and reduces the \
+               Illinois River's ability to drain through LaGrange."
+
+[[zones.zone_1.sensors]]
+station_id  = "KSPI"
+source      = "IEM/ASOS"
+type        = "precipitation"
+role        = "precip"
+location    = "Springfield Capital Airport"
+lat         = 39.844
+lon         = -89.678
+relevance   = "SOUTHERN BASIN PRECIP — rainfall here affects Sangamon River \
+               (joins Illinois at Beardstown, RM 88) and general southern \
+               basin saturation. Heavy Springfield rain increases lower \
+               Illinois inflow just above LaGrange."
+
+
+# =============================================================================
+# ZONE 2: Upper Peoria Lake — YOUR PROPERTY (Primary Zone)
+#
+# Geographic extent: Illinois River from approximately RM 145 (Kingston Mines)
+#                    to RM 165 (north end of Peoria Lake), including the lake
+#                    backwater area and east bank (Woodford County / Sunset Dr)
+# Key structures: Peoria Lock and Dam (RM 157.6)
+# Hydrological role: Your direct flood risk zone. Pool elevation here is set
+#                    by the combination of upstream inflow, Peoria L&D
+#                    operation, and Mississippi backwater from below.
+# Lead time: This IS the zone — readings here are current conditions.
+# =============================================================================
+
+[zones.zone_2]
+name        = "Upper Peoria Lake — Property Zone (Primary)"
+description = "The immediate zone containing your property. Sensor readings \
+               here describe current conditions directly. Flood risk is a \
+               function of: (1) upstream inflow arriving from the north, \
+               (2) Peoria L&D pool management by the Corps, and (3) backwater \
+               from the Mississippi pushing up from the south through LaGrange. \
+               The east bank (Woodford County / Sunset Drive) is a backwater \
+               area of the lake — flooding here can lag main channel crests \
+               by several hours as the lake fills laterally."
+
+[[zones.zone_2.sensors]]
+id          = "IL07P"
+shef_id     = "IL07"
+cwms_location = "Peoria-Pool"
+source      = "USACE/MVR"
+type        = "pool_elevation"
+role        = "direct"
+location    = "Peoria Lock and Dam pool (RM 157.6)"
+lat         = 40.694
+lon         = -89.592
+pool_target_ft_ngvd29 = 447.0
+relevance   = "MOST IMPORTANT SINGLE READING for your property. Pool elevation \
+               directly sets water surface level in Upper Peoria Lake. \
+               Wicket dam — lays flat during major floods, at which point \
+               pool elevation is no longer managed and rises with the river."
+
+[[zones.zone_2.sensors]]
+id          = "IL07TW"
+cwms_location = "Peoria-TW"
+source      = "USACE/MVR"
+type        = "tailwater_elevation"
+role        = "boundary"
+location    = "Peoria Lock and Dam tailwater (RM 157.6)"
+lat         = 40.694
+lon         = -89.592
+relevance   = "Tailwater here is the inflow condition for Zone 1 (LaGrange \
+               reach). Pool-to-tailwater differential confirms whether Peoria \
+               L&D is maintaining hydraulic control or has been overwhelmed."
+
+[[zones.zone_2.sensors]]
+usgs_id     = "05567500"
+source      = "USGS"
+type        = "stage"
+role        = "direct"
+location    = "Illinois River at Peoria, IL (pool gauge)"
+lat         = 40.694
+lon         = -89.590
+flood_stage_ft  = 18.0
+action_stage_ft = 14.0
+relevance   = "Pool stage gauge — cross-reference with USACE pool elevation. \
+               NWS issues official flood statements against this gauge. \
+               Note: this is a managed pool gauge, not a free-flow gauge — \
+               see Kingston Mines for free-flow discharge context."
+
+[[zones.zone_2.sensors]]
+usgs_id     = "05568500"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "boundary"
+location    = "Illinois River at Kingston Mines, IL (RM ~145)"
+lat         = 40.561
+lon         = -89.996
+flood_stage_ft      = 16.0
+action_stage_ft     = 14.0
+moderate_flood_ft   = 20.0
+major_flood_ft      = 24.0
+relevance   = "PRIMARY INFLOW GAUGE for Peoria pool. Kingston Mines is \
+               downstream of the Peoria L&D and captures total flow entering \
+               the lake from the north. This is the free-flow reference — \
+               use discharge (cfs) here for mass balance and rate-of-rise \
+               analysis. Stage here is your best proxy for east bank \
+               (Woodford County) flood conditions."
+
+[[zones.zone_2.sensors]]
+station_id  = "KPIA"
+source      = "IEM/ASOS"
+type        = "precipitation_wind_temperature"
+role        = "precip"
+location    = "Peoria International Airport"
+lat         = 40.664
+lon         = -89.693
+relevance   = "LOCAL PRECIP — immediate basin rainfall. Heavy local rain \
+               contributes to sheet runoff on the Woodford County bluffs \
+               above Sunset Drive independently of river stage — a secondary \
+               flood/mudslide risk specific to the east bank."
+
+[[zones.zone_2.sensors]]
+id          = "IEMRE-property"
+source      = "IEM/IEMRE"
+type        = "gridded_precip_temperature"
+role        = "precip"
+location    = "Property coordinates (Upper Peoria Lake east bank)"
+lat         = 40.720
+lon         = -89.640
+relevance   = "Continuous gridded precip at your exact location. Use for \
+               antecedent moisture tracking and historical event reconstruction. \
+               Best source for the question: how saturated is the local \
+               ground right now?"
+
+
+# =============================================================================
+# ZONE 3: Local Tributaries — Mackinaw / Spoon Catchments
+#
+# Geographic extent: Mackinaw River basin (east-central IL) and upper Spoon
+#                    River basin (west-central IL). These drain directly into
+#                    the Illinois River in the Pekin-Havana reach, immediately
+#                    upstream of Peoria.
+# Lead time to your property: 6–18 hours (Mackinaw), 12–24 hours (Spoon)
+# Hydrological role: Fast-responding tributaries that can spike Illinois River
+#                    flow rapidly after intense local rainfall. The Mackinaw
+#                    is particularly important — it joins the Illinois near
+#                    Pekin, just 10 miles upstream of your property.
+# =============================================================================
+
+[zones.zone_3]
+name        = "Local Tributaries — Mackinaw and Spoon Catchments"
+description = "The Mackinaw River drains east-central Illinois and joins the \
+               Illinois River near Pekin — the closest major tributary to your \
+               property. The Mackinaw responds quickly (hours) to intense \
+               rainfall over Bloomington-Normal and the Mackinaw basin. A \
+               rapidly rising Mackinaw is the most reliable short-fuse flood \
+               precursor for Peoria. The Spoon River drains the west-central \
+               basin and joins above Havana with a slightly longer lag."
+
+[[zones.zone_3.sensors]]
+usgs_id     = "05568580"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Mackinaw River near Green Valley, IL"
+lat         = 40.705
+lon         = -89.648
+relevance   = "CRITICAL SHORT-FUSE INDICATOR — the Mackinaw joins the Illinois \
+               approximately 10 miles upstream of your property. Rapid rise \
+               here (rate-of-rise monitoring especially important) translates \
+               directly to Peoria pool within 6–12 hours. Watch for rises \
+               exceeding 1 ft/hour during active rainfall."
+
+[[zones.zone_3.sensors]]
+station_id  = "KBMI"
+source      = "IEM/ASOS"
+type        = "precipitation"
+role        = "precip"
+location    = "Bloomington-Normal Airport"
+lat         = 40.477
+lon         = -88.916
+relevance   = "MACKINAW BASIN PRECIP — Bloomington-Normal sits in the upper \
+               Mackinaw watershed. Rainfall accumulation here is the leading \
+               indicator for Mackinaw River response. 1-inch+ in 1 hour should \
+               trigger elevated monitoring of USGS 05568580."
+
+[[zones.zone_3.sensors]]
+source      = "IEM/IEMRE"
+type        = "gridded_precip"
+role        = "precip"
+location    = "Mackinaw River basin centroid (approx)"
+lat         = 40.600
+lon         = -89.200
+relevance   = "Basin-average precip for Mackinaw catchment. Use for antecedent \
+               soil moisture assessment — a saturated Mackinaw basin produces \
+               much faster and higher runoff response than a dry one."
+
+
+# =============================================================================
+# ZONE 4: Mid Illinois River — Starved Rock to Henry
+#
+# Geographic extent: Illinois River from Henry (RM ~200) to Starved Rock (RM 231)
+#                    including the Vermilion River tributary confluence (near Oglesby)
+# Key structures: Starved Rock L&D (RM 231), Marseilles L&D (RM 247)
+# Lead time to your property: 18–48 hours
+# Hydrological role: Main stem conveyance reach. Flow pulses from Chicago and
+#                    the upper basin move through here before reaching Peoria.
+#                    Vermilion River joins here and can add significant volume.
+# =============================================================================
+
+[zones.zone_4]
+name        = "Mid Illinois River — Starved Rock to Henry"
+description = "The main stem reach from Starved Rock south to Henry. Flow \
+               pulses generated by Chicago-area releases and upper basin \
+               rainfall move through this reach 18–48 hours before reaching \
+               Peoria. The Vermilion River joins near Oglesby — a significant \
+               east-bank tributary that can amplify mid-reach flows \
+               substantially."
+
+[[zones.zone_4.sensors]]
+id          = "IL06P"
+shef_id     = "IL06"
+cwms_location = "Starved-Rock-Pool"
+source      = "USACE/MVR"
+type        = "pool_elevation"
+role        = "boundary"
+location    = "Starved Rock Lock and Dam (RM 231)"
+lat         = 41.319
+lon         = -88.994
+relevance   = "UPSTREAM MAIN STEM BOUNDARY — pool and tailwater here define \
+               what is entering the Starved Rock-to-Henry reach. Rising \
+               tailwater with high pool indicates a large volume is moving \
+               through. 24–48 hour lead time to Peoria."
+
+[[zones.zone_4.sensors]]
+usgs_id     = "05552500"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Illinois River at Marseilles, IL"
+lat         = 41.330
+lon         = -88.743
+relevance   = "FREE-FLOW REFERENCE in the Starved Rock reach. Use discharge \
+               here to compute flow volume entering the mid reach. Marseilles \
+               Canal runs parallel — gauge captures combined flow."
+
+[[zones.zone_4.sensors]]
+usgs_id     = "05557000"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Illinois River at Henry, IL"
+lat         = 41.112
+lon         = -89.354
+relevance   = "SOUTHERN BOUNDARY of this zone and northern boundary of Zone 3 \
+               context. Stage and discharge at Henry integrates everything \
+               from Zone 4 and above. 12–24 hour lead time to Peoria. \
+               Rising Henry is a reliable 24-hour precursor to Peoria \
+               flood stage."
+
+[[zones.zone_4.sensors]]
+usgs_id     = "05555300"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Vermilion River near Oglesby, IL (North Fork)"
+lat         = 41.300
+lon         = -89.041
+relevance   = "EAST TRIBUTARY — the Vermilion is a significant right-bank \
+               tributary joining in this reach. Heavy rainfall in the \
+               Vermilion basin (Pontiac / Dwight area) amplifies mid-reach \
+               Illinois River flows."
+
+
+# =============================================================================
+# ZONE 5: Upper Illinois River — Confluence to Starved Rock
+#
+# Geographic extent: Illinois River from its formation at the Kankakee/Des
+#                    Plaines confluence (RM 273) south to Starved Rock (RM 231)
+# Key structures: Dresden Island L&D (RM 271.5), Brandon Road L&D (RM 285.9)
+# Lead time to your property: 36–72 hours
+# Hydrological role: Where the Illinois River is born from Chicago-area drainage.
+#                    Dresden Island monitors combined Chicago metropolitan outflow.
+# =============================================================================
+
+[zones.zone_5]
+name        = "Upper Illinois River — Confluence to Starved Rock"
+description = "The reach where the Illinois River forms from the junction of \
+               the Kankakee and Des Plaines rivers. Flow volume entering here \
+               from Chicago-area drainage (MWRD releases, Des Plaines River \
+               runoff) and the Kankakee basin determines what arrives at \
+               Peoria 2–3 days later. Dresden Island pool is the key \
+               diagnostic."
+
+[[zones.zone_5.sensors]]
+id          = "IL04P"
+shef_id     = "IL04"
+cwms_location = "Dresden-Island-Pool"
+source      = "USACE/MVR"
+type        = "pool_elevation"
+role        = "direct"
+location    = "Dresden Island Lock and Dam (RM 271.5)"
+lat         = 41.388
+lon         = -88.428
+relevance   = "CONFLUENCE MONITOR — pool here reflects combined Kankakee + \
+               Des Plaines inflow. Elevated pool with high tailwater means \
+               large volumes are being passed downstream. 48–72 hour lead \
+               time to Peoria."
+
+[[zones.zone_5.sensors]]
+usgs_id     = "05521000"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "boundary"
+location    = "Kankakee River at Momence, IL"
+lat         = 41.162
+lon         = -87.661
+relevance   = "KANKAKEE BASIN INFLOW — the Kankakee drains northern Indiana \
+               and contributes significant volume to the Illinois River \
+               formation. A major Kankakee flood takes 2–3 days to reach \
+               Peoria. Momence is far enough upstream to provide meaningful \
+               lead time on Kankakee contributions."
+
+[[zones.zone_5.sensors]]
+usgs_id     = "05532500"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "boundary"
+location    = "Des Plaines River at Riverside, IL"
+lat         = 41.827
+lon         = -87.816
+relevance   = "DES PLAINES / CHICAGO METRO INFLOW — the Des Plaines drains \
+               the western Chicago suburbs and joins the Illinois system at \
+               Dresden. Heavy rainfall in the Chicago metro area appears here \
+               before propagating downstream through Brandon Road and Dresden."
+
+
+# =============================================================================
+# ZONE 6: Chicago / CAWS — Lake Michigan Inflow
+#
+# Geographic extent: Chicago Area Waterway System — Lake Michigan diversion
+#                    through the Chicago Sanitary and Ship Canal to Lockport
+# Key structures: Lockport L&D, T.J. O'Brien L&D, MWRD controlling works
+# Lead time to your property: 3–5 days
+# Hydrological role: Regulated inflow from Lake Michigan / Chicago metro.
+#                    MWRD releases during heavy rain events are the primary
+#                    driver of flow increases originating from this zone.
+# =============================================================================
+
+[zones.zone_6]
+name        = "Chicago CAWS — Lake Michigan Inflow and MWRD Control"
+description = "The Chicago Area Waterway System controls diversion of Lake \
+               Michigan water into the Illinois River basin through Lockport. \
+               MWRD (Metropolitan Water Reclamation District) operates the \
+               system and releases stormwater during heavy rain events in the \
+               Chicago metro area. These releases can significantly elevate \
+               Illinois River flows 3–5 days later at Peoria. Less frequent \
+               but important for large multi-day flood events."
+
+[[zones.zone_6.sensors]]
+id          = "IL02P"
+shef_id     = "IL02"
+cwms_location = "Lockport-Pool"
+source      = "USACE/MVR"
+type        = "pool_elevation"
+role        = "boundary"
+location    = "Lockport Lock and Dam (RM 291.1)"
+lat         = 41.590
+lon         = -88.073
+datum_note  = "IGLD datum — add 1.3 ft for NGVD29 equivalent"
+relevance   = "UPPER SYSTEM BOUNDARY — pool elevation here is the downstream \
+               end of the CAWS. Elevated Lockport pool during and after Chicago \
+               rain events signals increased outflow into the upper Illinois \
+               system. 3–5 day lead time to Peoria."
+
+[[zones.zone_6.sensors]]
+id          = "IL03P"
+shef_id     = "IL03"
+cwms_location = "Brandon-Road-Pool"
+source      = "USACE/MVR"
+type        = "pool_elevation"
+role        = "direct"
+location    = "Brandon Road Lock and Dam (RM 285.9)"
+lat         = 41.524
+lon         = -88.147
+relevance   = "FIRST DOWNSTREAM CONFIRMATION of MWRD releases. When Brandon \
+               Road pool and tailwater both rise rapidly following Chicago \
+               rainfall, elevated flows will reach Peoria in 3–4 days."
+
+[[zones.zone_6.sensors]]
+usgs_id     = "05536890"
+source      = "USGS"
+type        = "stage_discharge"
+role        = "direct"
+location    = "Chicago Sanitary and Ship Canal at Romeoville, IL"
+lat         = 41.637
+lon         = -88.092
+relevance   = "MWRD RELEASE MONITOR — discharge here directly measures what \
+               the CAWS is contributing to the Illinois River system. High \
+               discharge during or after Chicago storm events is the signature \
+               of MWRD releases. Best early quantitative indicator of \
+               Chicago-origin flow."
+
+[[zones.zone_6.sensors]]
+station_id  = "KORD"
+source      = "IEM/ASOS"
+type        = "precipitation"
+role        = "precip"
+location    = "Chicago O'Hare International Airport"
+lat         = 41.980
+lon         = -87.904
+relevance   = "CHICAGO METRO PRECIP — heavy rainfall at O'Hare is the primary \
+               trigger for MWRD releases. Accumulation > 1.5 inches in 6 hours \
+               historically triggers significant CAWS releases. Watch this \
+               station to anticipate Zone 6 boundary conditions 3–5 days ahead."
+
+[[zones.zone_6.sensors]]
+station_id  = "KPWK"
+source      = "IEM/ASOS"
+type        = "precipitation"
+role        = "precip"
+location    = "Chicago Executive Airport (Wheeling)"
+lat         = 42.114
+lon         = -87.901
+relevance   = "NORTHWEST SUBURB PRECIP — northwest Cook and Lake Counties drain \
+               into the Des Plaines River. Rainfall here contributes to Des \
+               Plaines flow (Zone 5) and CAWS system loading."
+
+
+# =============================================================================
+# ZONE ANALYSIS SUMMARY TABLE
+# =============================================================================
+#
+# Zone | Name                          | Lead Time    | Primary Alert Condition
+# ─────┼───────────────────────────────┼──────────────┼─────────────────────────
+#  0   | Mississippi Backwater Source  | 12h–5 days   | Grafton stage > 20 ft
+#  1   | Lower IL / Backwater Iface    | 6–24 hours   | LaGrange TW → pool diff < 1 ft
+#  2   | Upper Peoria Lake (Property)  | NOW          | Peoria pool > 447.5 ft / Kingston Mines stage > 14 ft
+#  3   | Local Tributaries             | 6–18 hours   | Mackinaw rate-of-rise > 1 ft/hr
+#  4   | Mid IL River (Starved Rock)   | 18–48 hours  | Henry stage > 15 ft
+#  5   | Upper IL River (Confluence)   | 36–72 hours  | Dresden pool elevated + Kankakee rising
+#  6   | Chicago CAWS                  | 3–5 days     | O'Hare 6hr precip > 1.5 in + CSSC discharge spike
+#
+# BACKWATER EVENT signature: Zone 0 rising + Zone 1 TW/pool differential
+#   collapsing + Peoria pool rising WITHOUT corresponding Zone 3/4/5 rise.
+#
+# UPSTREAM EVENT signature: Zone 5/6 elevated → Zone 4 rising → Zone 3
+#   responding → Zone 2 cresting. Classic top-down flood progression.
+#
+# COMPOUND EVENT signature: Both mechanisms active simultaneously.
+#   These are your worst-case events (2013, 2019, 2020 all had compound
+#   characteristics). Treat any event where Zone 0 AND Zone 4+ are both
+#   active as highest severity.

@@ -24,7 +24,7 @@
 # These are critical for real-time flood monitoring at Upper Peoria Lake
 # =============================================================================
 
-[[asos_stations]]
+[[stations]]
 station_id  = "KPIA"
 name        = "Peoria International Airport"
 latitude    = 40.664
@@ -32,11 +32,7 @@ longitude   = -89.693
 elevation_ft = 660
 network     = "ASOS"
 data_types  = ["precipitation", "temperature", "wind", "pressure", "humidity", "dewpoint"]
-relevance   = "PRIMARY LOCAL PRECIP — closest ASOS station to Upper Peoria Lake. \
-               Use for current conditions and local rainfall accumulation. \
-               1-minute interval data available from 2000 onward. This is the \
-               gold standard for detecting local convective rainfall that will \
-               impact the property within 6-12 hours."
+relevance = "PRIMARY LOCAL PRECIP — closest ASOS station to Upper Peoria Lake. Use for current conditions and local rainfall accumulation. 1-minute interval data available from 2000 onward. This is the gold standard for detecting local convective rainfall that will impact the property within 6-12 hours."
 basin       = "Illinois River - Peoria reach"
 upstream_gauge = "05568500"  # Kingston Mines - rainfall here drives discharge there
 
@@ -45,7 +41,7 @@ upstream_gauge = "05568500"  # Kingston Mines - rainfall here drives discharge t
 # HIGH priority — monitor tributary contributions to Illinois River
 # =============================================================================
 
-[[asos_stations]]
+[[stations]]
 station_id  = "KBMI"
 name        = "Central Illinois Regional Airport (Bloomington-Normal)"
 latitude    = 40.477
@@ -53,15 +49,11 @@ longitude   = -88.916
 elevation_ft = 871
 network     = "ASOS"
 data_types  = ["precipitation", "temperature", "wind"]
-relevance   = "HIGH — MACKINAW RIVER BASIN PRECIP. Bloomington sits in the upper \
-               Mackinaw River watershed. Rainfall here is a leading indicator of \
-               Mackinaw River rise at USGS 05568580 (outlet), which feeds directly \
-               into the Illinois River near Pekin. Lag time: 12-24 hours from \
-               heavy rainfall to peak Mackinaw discharge."
+relevance = "HIGH — MACKINAW RIVER BASIN PRECIP. Bloomington sits in the upper Mackinaw River watershed. Rainfall here is a leading indicator of Mackinaw River rise at USGS 05568580 (outlet), which feeds directly into the Illinois River near Pekin. Lag time: 12-24 hours from heavy rainfall to peak Mackinaw discharge."
 basin       = "Mackinaw River"
 upstream_gauge = "05568580"  # Mackinaw River near Congerville
 
-[[asos_stations]]
+[[stations]]
 station_id  = "KSPI"
 name        = "Abraham Lincoln Capital Airport (Springfield)"
 latitude    = 39.844
@@ -69,14 +61,11 @@ longitude   = -89.678
 elevation_ft = 597
 network     = "ASOS"
 data_types  = ["precipitation", "temperature"]
-relevance   = "HIGH — SOUTHERN BASIN REFERENCE. Useful for tracking storm systems \
-               moving northeast across the basin. Heavy Springfield rainfall often \
-               precedes Sangamon River rises, which join the Illinois at \
-               Beardstown (downstream of Peoria but indicates basin-wide saturation)."
+relevance = "HIGH — SOUTHERN BASIN REFERENCE. Useful for tracking storm systems moving northeast across the basin. Heavy Springfield rainfall often precedes Sangamon River rises, which join the Illinois at Beardstown (downstream of Peoria but indicates basin-wide saturation)."
 basin       = "Sangamon River"
 upstream_gauge = "05576500"  # Sangamon River at Riverton
 
-[[asos_stations]]
+[[stations]]
 station_id  = "KGBG"
 name        = "Galesburg Airport"
 latitude    = 40.938
@@ -84,10 +73,7 @@ longitude   = -90.431
 elevation_ft = 764
 network     = "ASOS"
 data_types  = ["precipitation", "temperature"]
-relevance   = "HIGH — SPOON RIVER BASIN PRECIP. Galesburg is in the upper Spoon \
-               River watershed. Rainfall here drives flow at USGS 05570000 \
-               (Spoon River at Seville), which enters Illinois River at Havana. \
-               Lag time: 18-36 hours from rainfall to Spoon River peak."
+relevance = "HIGH — SPOON RIVER BASIN PRECIP. Galesburg is in the upper Spoon River watershed. Rainfall here drives flow at USGS 05570000 (Spoon River at Seville), which enters Illinois River at Havana. Lag time: 18-36 hours from rainfall to Spoon River peak."
 basin       = "Spoon River"
 upstream_gauge = "05570000"  # Spoon River at Seville
 
@@ -96,7 +82,7 @@ upstream_gauge = "05570000"  # Spoon River at Seville
 # MEDIUM priority — track Chicago-origin flow contributions via CAWS
 # =============================================================================
 
-[[asos_stations]]
+[[stations]]
 station_id  = "KORD"
 name        = "Chicago O'Hare International Airport"
 latitude    = 41.980
@@ -104,16 +90,12 @@ longitude   = -87.904
 elevation_ft = 672
 network     = "ASOS"
 data_types  = ["precipitation", "temperature", "wind"]
-relevance   = "MEDIUM — CHICAGO METRO PRECIP PROXY. Heavy rainfall at O'Hare drives \
-               MWRD releases through the Chicago Area Waterway System (CAWS). These \
-               releases appear at Lockport L&D (IL02) and Brandon Road L&D (IL03) \
-               6-12 hours later, then propagate down through Dresden Island and \
-               eventually reach Peoria 48-72 hours after the Chicago rainfall event. \
-               This is your early warning for Chicago-origin flow pulses."
+relevance = "MEDIUM — CHICAGO METRO PRECIP PROXY. Heavy rainfall at O'Hare drives MWRD releases through the Chicago Area Waterway System (CAWS). These releases appear at Lockport L&D (IL02) and Brandon Road L&D (IL03) 6-12 hours later, then propagate down through Dresden Island and eventually reach Peoria 48-72 hours after the Chicago rainfall event. This is your early warning for Chicago-origin flow pulses."
 basin       = "Chicago Area Waterway System"
+upstream_gauge = "05536890"
 related_cwms = ["Lockport-Pool", "Brandon-Road-Pool"]
 
-[[asos_stations]]
+[[stations]]
 station_id  = "KPWK"
 name        = "Chicago Executive Airport (Wheeling)"
 latitude    = 42.114
@@ -121,18 +103,16 @@ longitude   = -87.901
 elevation_ft = 647
 network     = "ASOS"
 data_types  = ["precipitation", "temperature"]
-relevance   = "MEDIUM — NORTHWEST CHICAGO SUBURBS. Feeds the Des Plaines River \
-               drainage, which joins the Kankakee River at Dresden Island to form \
-               the Illinois River. Use in combination with KORD to assess total \
-               Chicago metro rainfall and likely MWRD release volumes."
+relevance = "MEDIUM — NORTHWEST CHICAGO SUBURBS. Feeds the Des Plaines River drainage, which joins the Kankakee River at Dresden Island to form the Illinois River. Use in combination with KORD to assess total Chicago metro rainfall and likely MWRD release volumes."
 basin       = "Des Plaines River"
+upstream_gauge = "05536890"
 related_cwms = ["Dresden-Island-Pool"]
 
 # =============================================================================
 # ADDITIONAL CONTEXT STATIONS (can be added as needed)
 # =============================================================================
 
-# [[asos_stations]]
+# [[stations]]
 # station_id  = "KMDH"
 # name        = "Southern Illinois Airport (Carbondale)"
 # latitude    = 37.778
@@ -140,9 +120,7 @@ related_cwms = ["Dresden-Island-Pool"]
 # elevation_ft = 411
 # network     = "ASOS"
 # data_types  = ["precipitation", "temperature"]
-# relevance   = "LOW — Far southern Illinois reference. Tracks storm systems \
-#                approaching from the south/southwest before they reach the \
-#                Illinois River basin."
+# relevance = "LOW — Far southern Illinois reference. Tracks storm systems #                approaching from the south/southwest before they reach the #                Illinois River basin."
 # basin       = "Southern Illinois (out of basin)"
 
 # =============================================================================
@@ -151,9 +129,11 @@ related_cwms = ["Dresden-Island-Pool"]
 
 [iem_api]
 base_url = "https://mesonet.agron.iastate.edu"
-asos_1min_endpoint = "/cgi-bin/request/asos1min.py"
-current_endpoint = "/json/current.py"
-daily_summary_endpoint = "/cgi-bin/request/daily.py"
+asos_1min_url = "/cgi-bin/request/asos1min.py"
+current_url = "/json/current.py"
+daily_summary_url = "/cgi-bin/request/daily.py"
+iemre_url = "/cgi-bin/request/griddeddata.py"
+mrms_url = "/cgi-bin/request/raster.py"
 
 # Data availability notes:
 # - 1-minute data: 2000-present for most ASOS stations
