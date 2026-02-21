@@ -8,6 +8,7 @@
 /// ├── config      — station registry configuration loader (stations.toml)
 /// ├── stations    — USGS site code registry with NWS flood stage thresholds
 /// ├── daemon      — main daemon loop (startup, backfill, polling, warehousing)
+/// ├── endpoint    — HTTP API for querying site data
 /// ├── ingest
 /// │   ├── usgs    — USGS NWIS IV API: URL construction + JSON parsing
 /// │   └── fixtures (test only) — representative API response payloads
@@ -25,6 +26,7 @@ pub mod analysis;
 pub mod config;
 pub mod daemon;
 pub mod db;
+pub mod endpoint;
 pub mod ingest;
 pub mod model;
 pub mod monitor;

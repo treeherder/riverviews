@@ -29,10 +29,27 @@ use crate::model::{GaugeReading, SiteReadings};
 /// happen with a well-formed IV response but could under retry/dedup logic),
 /// the last one encountered wins.
 pub fn group_by_site(readings: Vec<GaugeReading>) -> HashMap<String, SiteReadings> {
-    // TODO: implement — iterate readings, insert or update the SiteReadings
-    // entry for each site_code, routing by parameter_code.
-    let _ = readings;
-    unimplemented!("group_by_site: partition readings into per-site structs")
+    let mut grouped: HashMap<String, SiteReadings> = HashMap::new();
+    
+    for reading in readings {
+        let site_code = reading.site_code.clone();
+        
+        // Get or create the SiteReadings entry for this site
+        let site_readings = grouped.entry(site_code.clone()).or_insert_with(|| SiteReadings {
+            site_code: site_code.clone(),
+            discharge_cfs: None,
+            stage_ft: None,
+        });
+        
+        // Route by parameter code
+        match reading.parameter_code.as_str() {
+            "00060" => site_readings.discharge_cfs = Some(reading),
+            "00065" => site_readings.stage_ft = Some(reading),
+            _ => {}
+        }
+    }
+    
+    grouped
 }
 
 // ---------------------------------------------------------------------------

@@ -17,3 +17,6 @@ dotenv = "0.15"
 # HTTP client (for USGS and CWMS APIs) - using rustls to avoid OpenSSL dependency
 reqwest = { version = "0.11", features = ["blocking", "json", "rustls-tls"], default-features = false }
 urlencoding = "2.1"  # URL encoding for CWMS API requests
+
+# HTTP server for daemon endpoint
+tiny_http = "0.12"
