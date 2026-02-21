@@ -1,0 +1,24 @@
+# Database connectivity
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+python-dotenv>=1.0.0
+
+# Data analysis and numerical computing
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Machine learning
+scikit-learn>=1.3.0
+
+# Segmented regression / piecewise linear fitting
+pwlf>=2.2.0  # Piecewise Linear Fit library
+
+# Visualization (optional but recommended)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Development tools
+pytest>=7.4.0
+jupyter>=1.0.0
+ipython>=8.0.0
