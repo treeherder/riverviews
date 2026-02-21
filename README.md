@@ -1,15 +1,21 @@
 # FloPro - Flood Monitoring Service
 
-**Status:** Early development - infrastructure and testing framework in place
+**Status:** Early development - data curation infrastructure and monitoring daemon
 
 ## Vision
 
-FloPro is a generalized flood monitoring system designed to work with any river or waterway. The software ingests data from multiple sources (USGS gauges, NOAA weather, NWS forecasts, soil moisture, dam operations), builds predictive models from historical patterns, and provides early warning alerts for downstream communities.
+FloPro is a generalized flood monitoring system designed to work with any river or waterway. The system consists of:
+
+1. **Rust Monitoring Daemon** - Reliable, server-side data curation and simple alerting
+2. **Python Analysis Scripts** - Complex statistical analysis, regression, and ML modeling
+
+The daemon ingests data from multiple sources (USGS gauges, USACE CWMS, NWS events), validates and curates it in PostgreSQL, and provides simple threshold-based monitoring. Python scripts perform complex analysis on the curated data.
 
 **Key Goals:**
+- **Separation of concerns**: Rust for reliability and data integrity, Python for analytical flexibility
 - **Waterway-agnostic**: Configure for any river system via TOML configuration
 - **Multi-source intelligence**: Combine gauge data, weather forecasts, soil saturation, and dam operations
-- **Historical learning**: Build flood prediction models from decades of archived data
+- **Historical learning**: Build flood prediction models from decades of archived data (Python)
 - **Upstream lead time**: Detect flood conditions hours or days before they arrive downstream
 - **Open architecture**: Extensible database schema for new data sources
 
@@ -19,19 +25,33 @@ FloPro is a generalized flood monitoring system designed to work with any river 
 ## Project Structure
 
 ```
-flomon_service/
-├── src/
-│   ├── bin/
-│   │   └── historical_ingest.rs  # Historical data backfill
-│   ├── alert/                     # Flood threshold and staleness checking
-│   ├── analysis/                  # Data grouping and trend analysis
-│   ├── ingest/                    # USGS API client and data parsing
-│   ├── model.rs                   # Core data structures
-│   ├── stations.rs                # Station registry and metadata
-│   ├── lib.rs                     # Shared library
-│   └── main.rs                    # Real-time monitoring service (TBD)
-├── tests/                         # Integration tests
-└── Cargo.toml
+flopro/
+├── flomon_service/               # Rust monitoring daemon
+│   ├── src/
+│   │   ├── bin/
+│   │   │   ├── historical_ingest.rs      # Historical USGS backfill
+│   │   │   ├── ingest_cwms_historical.rs # USACE CWMS ingestion
+│   │   │   ├── ingest_peak_flows.rs      # NWS peak flow events
+│   │   │   └── detect_backwater.rs       # Simple backwater check
+│   │   ├── alert/                # Simple threshold monitoring
+│   │   ├── analysis/             # Basic data grouping utilities
+│   │   ├── ingest/               # API clients and data parsing
+│   │   ├── model.rs              # Core data structures
+│   │   ├── stations.rs           # Station registry
+│   │   ├── lib.rs                # Shared library
+│   │   └── main.rs               # Daemon (in development)
+│   ├── docs/                     # Architecture documentation
+│   ├── sql/                      # Database migrations
+│   └── Cargo.toml
+└── floml/                        # Python ML analysis package
+    ├── floml/
+    │   ├── regression.py         # Segmented linear regression
+    │   ├── correlation.py        # Multi-station correlation
+    │   ├── precursors.py         # Flood precursor detection
+    │   └── db.py                 # Database connections
+    ├── scripts/                  # Standalone analysis scripts
+    ├── notebooks/                # Jupyter notebooks
+    └── requirements.txt
 ```
 
 ## Current Status
@@ -365,11 +385,15 @@ cd illinois_river_flood_warning.wiki
 - 📋 USACE lock/dam operations
 - 📋 Soil moisture data (NRCS SNOTEL)
 
-### Phase 4: Intelligence (Future)
-- 📋 Flood prediction models (regression analysis on historical data)
+### Phase 4: Analysis Intelligence (Future - Python)
+- 📋 Flood precursor pattern detection (Python scripts)
+- 📋 Regression analysis on historical data (Python/SciPy/scikit-learn)
+- 📋 Multi-station correlation models (Python/Pandas)
+- 📋 Backwater influence modeling (Python)
 - 📋 Multi-source risk scoring (combine gauge + weather + soil + dam releases)
-- 📋 Automated flood event detection
 - 📋 Return interval calculations
+
+See [docs/PYTHON_INTEGRATION.md](flomon_service/docs/PYTHON_INTEGRATION.md) for architecture
 
 ### Phase 5: User Interface (Future)
 - 📋 Web dashboard (real-time visualization)

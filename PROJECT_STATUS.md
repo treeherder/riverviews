@@ -2,11 +2,14 @@
 
 **Last Updated:** February 20, 2026  
 **Project:** Flood Monitoring Service (flomon_service) - Peoria Illinois River  
-**Language:** Rust | **Database:** PostgreSQL 18.2 | **LOC:** ~26,253
+**Architecture:** Rust daemon + Python analysis  
+**Language:** Rust (daemon) | Python (analysis - planned) | **Database:** PostgreSQL 18.2
 
 ## Quick Context
 
-Flood monitoring system for Peoria, IL area. Ingests USGS gauge data, NWS flood thresholds, and USACE lock/dam operations to provide early flood warnings.
+Flood monitoring system for Peoria, IL area. **Rust daemon** handles data ingestion, curation, and simple threshold monitoring. **Python scripts** (planned) handle complex statistical analysis, regression, and ML modeling.
+
+**Refactoring (Feb 20, 2026):** Separated complex analysis from Rust codebase. Daemon now focuses on data curation and simple threshold monitoring. Python FloML package handles statistical analysis and ML. See [docs/REFACTORING_PLAN.md](flomon_service/docs/REFACTORING_PLAN.md).
 
 ## Database Status: ✅ PRODUCTION READY
 
@@ -17,7 +20,7 @@ PGPASSWORD=flopro_dev_2026 psql -h localhost -U flopro_admin -d flopro_db
 
 **DATABASE_URL:** `postgresql://flopro_admin:flopro_dev_2026@localhost/flopro_db` (in `.env`)
 
-**Schemas:** usgs_raw, nws, usace, flood_analysis, public  
+**Schemas:** usgs_raw, nws, usace, flood_analysis (for Python output), monitoring, public  
 **Migrations:** 5 files in `sql/` (001-005)  
 **Validation:** `./scripts/validate_db_setup.sh`
 
@@ -29,21 +32,17 @@ PGPASSWORD=flopro_dev_2026 psql -h localhost -U flopro_admin -d flopro_db
 ## Test Status
 
 **Integration Tests:** ✅ 9/9 passing (100%) - `cargo test --test peak_flow_integration`  
-**Unit Tests:** ⚠️ 45/64 passing (70%) - `cargo test --lib`
+**Unit Tests:** ⚠️ Some failing (intentional - unimplemented stubs for monitoring features)
 
-**19 Failing Tests** (intentional - unimplemented stubs):
-- 9 failures: `src/alert/stalenesses.rs` - staleness detection not implemented
-- 9 failures: `src/analysis/groupings.rs` - site grouping not implemented  
-- 1 failure: `src/analysis/flood_events.rs` - precursor detection incomplete
+**Unimplemented Features:**
+- Staleness detection - time-based data freshness checks
+- Site grouping - organizing readings by station
 
 ## Critical Unimplemented Functions
 
 ```rust
 // src/alert/stalenesses.rs:47
 unimplemented!("is_stale_at: parse datetime and compare against now")
-
-// src/alert/thresholds.rs:36  
-unimplemented!("check_flood_stage: compare reading.value against threshold levels")
 
 // src/analysis/groupings.rs:34
 unimplemented!("group_by_site: partition readings into per-site structs")
@@ -59,12 +58,12 @@ unimplemented!("group_by_site: partition readings into per-site structs")
 | Site Registry | `stations.rs` | ✅ Complete | Loads from `stations.toml` |
 | Database Utils | `db.rs` | ✅ Complete | Connection helpers |
 | USGS Ingest | `ingest/usgs.rs` | ✅ Complete | NWIS IV API parser |
-| Alert - Thresholds | `alert/thresholds.rs` | 🔴 Stub | Comparison logic needed |
+| USACE Ingest | `ingest/cwms.rs` | ✅ Complete | CWMS API integration |
+| Peak Flow Ingest | `ingest/peak_flow.rs` | ✅ Complete | NWS historical events |
+| Alert - Thresholds | `alert/thresholds.rs` | ✅ Complete | Simple threshold checking |
 | Alert - Staleness | `alert/stalenesses.rs` | 🔴 Stub | Time-based checks needed |
 | Analysis - Grouping | `analysis/groupings.rs` | 🔴 Stub | Site aggregation needed |
-| Analysis - Events | `analysis/flood_events.rs` | 🟡 Partial | Schema exists, logic incomplete |
-| Monitor | `monitor/mod.rs` | 🔴 Minimal | Polling loop not implemented |
-| Main Service | `main.rs` | 🔴 Placeholder | Runtime not implemented |
+| Main Daemon | `main.rs` | 🟡 Skeleton | Runtime loop not implemented |
 
 ## Available Binaries (src/bin/)
 
@@ -73,8 +72,9 @@ unimplemented!("group_by_site: partition readings into per-site structs")
 | `historical_ingest` | ✅ Ready | Backfill USGS IV data (120 days max) |
 | `ingest_peak_flows` | ✅ Ready | Import historical flood events from USGS |
 | `ingest_cwms_historical` | ✅ Ready | Import USACE lock/dam data |
-| `analyze_flood_events` | 📝 Planned | Event correlation analysis |
-| `detect_backwater` | 📝 Planned | Mississippi backwater detection |
+| `detect_backwater` | ✅ Ready | Simple Mississippi backwater check |
+
+**Note:** Complex analysis moved to Python (floml package)
 
 ## Data Sources
 
@@ -91,13 +91,51 @@ unimplemented!("group_by_site: partition readings into per-site structs")
 
 ## Next Implementation Steps (Priority Order)
 
+### Rust Daemon (Core Monitoring)
+
 1. **Implement staleness detection** (`alert/stalenesses.rs`)
    - Parse ISO 8601 datetime with timezone
    - Compare against current time
    - Return boolean if reading exceeds threshold
-   - Fixes: 9 unit tests
 
 2. **Implement threshold checking** (`alert/thresholds.rs`)
+   - Compare reading value against NWS thresholds
+   - Return AlertLevel enum (Normal/Action/Flood/Moderate/Major)
+
+3. **Implement site grouping** (`analysis/groupings.rs`)
+   - Group flat readings by site_code
+   - Associate discharge (00060) and stage (00065) parameters
+   - Return HashMap<String, SiteReadings>
+
+4. **Build monitoring runtime** (`main.rs`)
+   - 15-minute polling loop
+   - Call USGS API for all sites
+   - Store readings in database
+   - Check thresholds and generate simple alerts
+   - Track data staleness
+
+### Python Analysis (Complex Statistics)
+
+5. **Set up Python environment**
+   ```bash
+   mkdir python_analysis
+   cd python_analysis
+   python -m venv venv
+   pip install pandas numpy scipy scikit-learn psycopg2-binary sqlalchemy
+   ```
+
+6. **Create first analysis script**
+   - Connect to PostgreSQL
+   - Read historical flood events
+   - Perform precursor pattern detection
+   - Write results to flood_analysis schema
+
+7. **Implement regression models**
+   - Upstream-downstream correlation
+   - Stage-discharge relationships
+   - Backwater influence scoring
+
+See [docs/PYTHON_INTEGRATION.md](flomon_service/docs/PYTHON_INTEGRATION.md) for analysis architecture.
    - Compare reading value against NWS thresholds
    - Return AlertLevel enum (Normal/Action/Flood/Moderate/Major)
    - Fixes: 2 unit tests
@@ -168,7 +206,9 @@ cargo run --bin historical_ingest
 - `docs/DATABASE_SETUP.md` - Complete database guide
 - `docs/SCHEMA_EXTENSIBILITY.md` - Schema design principles
 - `docs/CWMS_INTEGRATION.md` - USACE integration details
-- `docs/FLOOD_ANALYSIS.md` - Event analysis framework
+- `docs/PYTHON_INTEGRATION.md` - Python analysis architecture (**NEW**)
+- `docs/REFACTORING_PLAN.md` - Rust-Python separation plan (**NEW**)
+- `docs/FLOOD_ANALYSIS.md` - Event analysis framework (archived - moved to Python)
 - `scripts/README.md` - Validation script details
 
 ## Security
@@ -213,6 +253,16 @@ When resuming work on this project:
 
 ## Recent Changes (Feb 20, 2026)
 
+**Refactoring - Rust-Python Separation:**
+- ✅ Removed `src/bin/analyze_flood_events.rs` (complex analysis → Python)
+- ✅ Removed `src/analysis/flood_events.rs` (statistical modeling → Python)
+- ✅ Simplified `src/analysis/mod.rs` (focus on data grouping only)
+- ✅ Updated `main.rs` with daemon architecture outline
+- ✅ Created `docs/REFACTORING_PLAN.md` - migration strategy
+- ✅ Created `docs/PYTHON_INTEGRATION.md` - analysis architecture
+- ✅ Updated README.md and PROJECT_STATUS.md
+
+**Database Setup:**
 - ✅ Fixed validation script for TCP/IP authentication
 - ✅ Enhanced .gitignore for security (credentials, logs, state files)
 - ✅ Updated DATABASE_SETUP.md with TCP/IP guidance
