@@ -1,12 +1,13 @@
-///group_by_site + grouping tests + integration pipeline test
-/// 
-///  trend detection, rate-of-rise calculations, and upstream correlation logic will also likely live here, since they all depend on having a time series of readings for each site and may require access to the same metadata about each site (e.g. which parameters are available, what are the threshold values, etc).
-/// Site grouping and pipeline integration.
+/// Site grouping and data organization utilities.
 ///
 /// `group_by_site` takes the flat list of `GaugeReading`s produced by the
 /// ingest layer and organizes them into per-site `SiteReadings` structs,
 /// making it convenient to ask "what is the current stage at Kingston Mines?"
 /// without filtering a flat list every time.
+///
+/// This module provides basic data organization helpers. Complex analysis
+/// such as trend detection, rate-of-rise calculations, and upstream correlation
+/// are handled by external Python scripts that operate on the curated database.
 ///
 /// The integration test at the bottom of this module exercises the full
 /// parse → group → threshold-check pipeline, and lives here because
@@ -14,7 +15,7 @@
 
 use std::collections::HashMap;
 
-use crate::model::{GaugeReading, SiteReadings, PARAM_DISCHARGE, PARAM_STAGE};
+use crate::model::{GaugeReading, SiteReadings};
 
 // ---------------------------------------------------------------------------
 // Grouping
