@@ -15,39 +15,31 @@
 //! Environment:
 //!   DATABASE_URL - PostgreSQL connection string
 
-use flomon_service::{db, stations};
+use flomon_service::daemon::Daemon;
 
 fn main() {
     println!("🌊 Flood Monitoring Service");
     println!("============================\n");
     
-    // Verify database connection
-    println!("📊 Connecting to database...");
-    let _client = db::connect_and_verify(&["usgs_raw", "nws", "usace"])
-        .unwrap_or_else(|e| {
-            eprintln!("\n{}\n", e);
-            eprintln!("\nRun setup validation: ./scripts/validate_db_setup.sh\n");
-            std::process::exit(1);
-        });
-    println!("✓ Database connection verified\n");
+    // Create daemon with default configuration
+    let mut daemon = Daemon::new();
     
-    // Load station registry
-    println!("📍 Loading station registry...");
-    let station_count = stations::load_stations().len();
-    println!("✓ Loaded {} monitoring stations\n", station_count);
+    // Initialize: validate database and load stations
+    println!("📊 Initializing daemon...");
+    if let Err(e) = daemon.initialize() {
+        eprintln!("\n❌ Initialization failed: {}\n", e);
+        eprintln!("Run setup validation: ./scripts/validate_db_setup.sh\n");
+        std::process::exit(1);
+    }
+    println!("✓ Daemon initialized\n");
     
-    println!("ℹ️  Daemon mode not yet implemented.");
-    println!("   Current functionality available via utility binaries:");
-    println!("   • historical_ingest    - Ingest historical USGS data");
-    println!("   • ingest_cwms_historical - Ingest USACE CWMS data");
-    println!("   • ingest_peak_flows    - Ingest NWS peak flow events");
-    println!("   • detect_backwater     - Check backwater conditions\n");
+    // TODO: Check staleness and backfill if needed
+    println!("📋 Startup checks:");
+    println!("   ⚠️  Staleness check: not yet implemented");
+    println!("   ⚠️  Backfill missing data: not yet implemented");
+    println!("   ⚠️  Continuous monitoring: not yet implemented\n");
     
-    println!("📋 Future daemon features:");
-    println!("   • Scheduled real-time data ingestion");
-    println!("   • Threshold-based alerting");
-    println!("   • Staleness monitoring");
-    println!("   • Data quality validation");
-    println!("   • API endpoint for external scripts\n");
+    println!("ℹ️  Run tests to guide implementation:");
+    println!("   cargo test --test daemon_lifecycle\n");
 }
 
