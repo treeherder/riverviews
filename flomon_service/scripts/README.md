@@ -1,4 +1,4 @@
-# FloPro Utility Scripts
+# Riverviews Utility Scripts
 
 This directory contains scripts for database setup, diagnostics, historical data analysis,
 and flood event characterization.
@@ -78,7 +78,7 @@ cd flomon_service
 
 **Example output on success:**
 ```
-=== Flopro Database Setup Validation ===
+=== Riverviews Database Setup Validation ===
 
 [1/8] Checking PostgreSQL installation...
 ✓ PostgreSQL 14 installed

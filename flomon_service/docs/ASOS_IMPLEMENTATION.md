@@ -166,10 +166,10 @@ for location in &self.asos_locations.clone() {
 
 ```bash
 # Apply ASOS schema
-psql -U flomon_user -d flopro_db -f sql/006_iem_asos.sql
+psql -U flopro_user -d flopro_db -f sql/006_iem_asos.sql
 
 # Verify tables
-psql -U flomon_user -d flopro_db -c "\dt"
+psql -U flopro_user -d flopro_db -c "\dt"
 ```
 
 ### Query Recent Precipitation

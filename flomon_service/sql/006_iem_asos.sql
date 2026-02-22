@@ -271,14 +271,14 @@ ON CONFLICT (basin) DO NOTHING;
 -- Permissions
 -- ============================================================================
 
-GRANT SELECT, INSERT, UPDATE ON asos_stations TO flomon_user;
-GRANT SELECT, INSERT, UPDATE ON asos_observations TO flomon_user;
-GRANT SELECT, INSERT, UPDATE ON asos_precip_summary TO flomon_user;
-GRANT SELECT ON asos_latest TO flomon_user;
-GRANT SELECT ON asos_active_precip TO flomon_user;
-GRANT SELECT ON basin_precip_thresholds TO flomon_user;
-GRANT USAGE, SELECT ON SEQUENCE asos_observations_id_seq TO flomon_user;
-GRANT USAGE, SELECT ON SEQUENCE asos_precip_summary_id_seq TO flomon_user;
+GRANT SELECT, INSERT, UPDATE ON asos_stations TO flopro_user;
+GRANT SELECT, INSERT, UPDATE ON asos_observations TO flopro_user;
+GRANT SELECT, INSERT, UPDATE ON asos_precip_summary TO flopro_user;
+GRANT SELECT ON asos_latest TO flopro_user;
+GRANT SELECT ON asos_active_precip TO flopro_user;
+GRANT SELECT ON basin_precip_thresholds TO flopro_user;
+GRANT USAGE, SELECT ON SEQUENCE asos_observations_id_seq TO flopro_user;
+GRANT USAGE, SELECT ON SEQUENCE asos_precip_summary_id_seq TO flopro_user;
 
 -- ============================================================================
 -- Verification Queries

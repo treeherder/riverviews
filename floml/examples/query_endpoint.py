@@ -117,7 +117,7 @@ def list_all_stations():
 
 def main():
     """Main demo function."""
-    print("FloPro Endpoint Demo")
+    print("Riverviews Endpoint Demo")
     print("="*60)
     
     # Test health check

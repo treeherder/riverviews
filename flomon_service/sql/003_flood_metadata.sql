@@ -1,4 +1,4 @@
--- FloPro Database Schema - Flood Metadata
+-- Riverviews Database Schema - Flood Metadata
 -- Version: 003
 -- Description: NWS flood thresholds and historical flood event tracking
 -- 

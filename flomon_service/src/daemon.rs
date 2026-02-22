@@ -86,7 +86,7 @@ impl Daemon {
     /// Initialize daemon: validate database and load stations
     pub fn initialize(&mut self) -> Result<(), Box<dyn Error>> {
         // Validate database schemas
-        let client = db::connect_and_verify(&["usgs_raw", "nws", "usace"])?;
+        let mut client = db::connect_and_verify(&["usgs_raw", "nws", "usace"])?;
         
         // Load USGS station registry from TOML
         self.stations = stations::load_stations();
@@ -134,10 +134,54 @@ impl Daemon {
         if asos_path.exists() {
             let asos_locs = asos_locations::load_locations(asos_path)?;
             println!("📡 Loaded {} ASOS stations for precipitation monitoring", asos_locs.len());
+            
+            // Register ASOS stations in database
             for loc in &asos_locs {
+                // IEM API returns 3-letter codes (e.g., "PIA" for "KPIA")
+                // Strip leading "K" from station_id to match API response
+                let db_station_id = if loc.station_id.starts_with("K") && loc.station_id.len() == 4 {
+                    &loc.station_id[1..]  // Strip the "K" prefix
+                } else {
+                    &loc.station_id[..]  // Use as-is
+                };
+                
                 println!("   {} ({}) - {} basin - Priority: {:?}",
                     loc.station_id, loc.name, loc.basin, loc.priority);
+                
+                // Insert or update station metadata
+                match client.execute(
+                    "INSERT INTO asos_stations 
+                     (station_id, name, latitude, longitude, elevation_ft, basin, priority, 
+                      poll_interval_minutes, data_types, relevance)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                     ON CONFLICT (station_id) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        latitude = EXCLUDED.latitude,
+                        longitude = EXCLUDED.longitude,
+                        elevation_ft = EXCLUDED.elevation_ft,
+                        basin = EXCLUDED.basin,
+                        priority = EXCLUDED.priority,
+                        poll_interval_minutes = EXCLUDED.poll_interval_minutes,
+                        relevance = EXCLUDED.relevance,
+                        updated_at = NOW()",
+                    &[
+                        &db_station_id,
+                        &loc.name,
+                        &loc.latitude,
+                        &loc.longitude,
+                        &loc.elevation_ft,
+                        &loc.basin,
+                        &loc.priority.as_str().to_string(),
+                        &loc.priority.poll_interval_minutes(),
+                        &loc.data_types,
+                        &loc.relevance,
+                    ]
+                ) {
+                    Ok(_) => {},
+                    Err(e) => eprintln!("      Warning: Failed to register ASOS station {}: {}", db_station_id, e),
+                }
             }
+            
             self.asos_locations = asos_locs;
         } else {
             eprintln!("Warning: iem_asos.toml not found, skipping ASOS monitoring");

@@ -2,7 +2,7 @@
 
 ## Overview
 
-USGS provides **three distinct water data services**, each optimized for different time ranges and use cases. FloPro uses all three services appropriately.
+USGS provides **three distinct water data services**, each optimized for different time ranges and use cases. Riverviews uses all three services appropriately.
 
 ---
 
@@ -25,7 +25,7 @@ USGS provides **three distinct water data services**, each optimized for differe
 https://waterservices.usgs.gov/nwis/iv/
 ```
 
-**FloPro Implementation:**
+**Riverviews Implementation:**
 - **Module:** [src/ingest/usgs.rs](../src/ingest/usgs.rs)
 - **Functions:** `build_iv_url()`, `parse_iv_response()`
 - **Used by:** Main daemon polling loop (every 15 minutes)
@@ -72,7 +72,7 @@ https://waterservices.usgs.gov/nwis/iv/?sites=05568500&parameterCd=00060,00065&p
 https://waterservices.usgs.gov/nwis/dv/
 ```
 
-**FloPro Implementation:**
+**Riverviews Implementation:**
 - **Module:** [src/ingest/usgs.rs](../src/ingest/usgs.rs)
 - **Functions:** `build_dv_url()`, `parse_dv_response()`
 - **Used by:** Historical backfill, gap filling beyond 120 days
@@ -100,7 +100,7 @@ https://waterservices.usgs.gov/nwis/dv/?sites=05568500&parameterCd=00060,00065&s
 - ✅ Daily mean discharge and stage
 - ✅ Suitable for statistical analysis
 
-**When FloPro Uses DV:**
+**When Riverviews Uses DV:**
 ```rust
 // From src/daemon.rs:326
 fn backfill_daily_values(&mut self, site_code: &str, start_date: DateTime<Utc>, end_date: DateTime<Utc>) -> Result<usize, Box<dyn Error>> {
@@ -140,7 +140,7 @@ fn backfill_daily_values(&mut self, site_code: &str, start_date: DateTime<Utc>, 
 https://nwis.waterdata.usgs.gov/{state}/nwis/peak?site_no={site}&agency_cd=USGS&format=rdb
 ```
 
-**FloPro Implementation:**
+**Riverviews Implementation:**
 - **Module:** [src/ingest/peak_flow.rs](../src/ingest/peak_flow.rs)
 - **Functions:** `parse_rdb()`, `identify_flood_events()`
 - **Used by:** Historical flood analysis, threshold validation
@@ -167,7 +167,7 @@ USGS	05568500	2019-05-31		94200		24.21		2019
 - `gage_ht` - Peak gauge height (ft)
 - `peak_cd` - Qualification codes
 
-**FloPro Usage:**
+**Riverviews Usage:**
 ```rust
 use flomon_service::ingest::peak_flow;
 
@@ -205,7 +205,7 @@ notable_floods = "2008-09 (101,000 cfs, 24.68'), 2013-04 (96,800 cfs, 24.62'), 2
 
 ---
 
-## FloPro Daemon Behavior
+## Riverviews Daemon Behavior
 
 ### Startup Backfill
 
@@ -368,7 +368,7 @@ CREATE TABLE usgs_raw.gauge_readings (
 | **Backfill startup** | IV then DV | Daemon handles automatically | 0-120 days: IV, 120+: DV |
 | **Gap beyond 4 months** | DV | `backfill_daily_values()` | Historical only |
 
-**FloPro automatically selects the right service** based on the requested time range and data availability.
+**Riverviews automatically selects the right service** based on the requested time range and data availability.
 
 ---
 

@@ -554,13 +554,13 @@ fn fetch_sensor_reading(
             ).map_err(|e| format!("ASOS query failed: {}", e))?;
             
             if let Some(row) = rows.first() {
-                let value_opt: Option<rust_decimal::Decimal> = row.get(0);
+                let value_opt: Option<f64> = row.get(0);
                 let timestamp: DateTime<Utc> = row.get(1);
                 let staleness = (Utc::now() - timestamp).num_minutes();
                 
                 if let Some(value) = value_opt {
                     return Ok((
-                        Some(value.to_string().parse().unwrap_or(0.0)),
+                        Some(value),
                         Some("in".to_string()),
                         Some(timestamp.to_rfc3339()),
                         Some(staleness)

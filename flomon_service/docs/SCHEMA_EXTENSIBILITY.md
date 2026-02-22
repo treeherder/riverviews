@@ -5,7 +5,7 @@
 
 ## Overview
 
-The FloPro database schema is designed for incremental expansion. New data sources can be added through numbered migrations without disrupting existing functionality. The multi-schema architecture (`usgs_raw`, `nws`, `noaa`, `usace`) provides natural separation of concerns.
+The Riverviews database schema is designed for incremental expansion. New data sources can be added through numbered migrations without disrupting existing functionality. The multi-schema architecture (`usgs_raw`, `nws`, `noaa`, `usace`) provides natural separation of concerns.
 
 ## Migration Timeline
 

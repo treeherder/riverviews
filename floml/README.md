@@ -1,6 +1,6 @@
 # FloML - Flood Machine Learning
 
-Statistical analysis and machine learning for flood prediction using data curated by the FloPro monitoring daemon.
+Statistical analysis and machine learning for flood prediction using data curated by the Riverviews monitoring daemon.
 
 ## Overview
 
@@ -37,12 +37,26 @@ floml/
 │   ├── regression.py      # Segmented linear regression models
 │   ├── correlation.py     # Multi-station analysis
 │   └── precursors.py      # Flood precursor detection
-├── scripts/               # Standalone analysis scripts
-│   └── analyze_events.py  # Example analysis workflow
+├── scripts/               # Visualization and analysis tools
+│   ├── zone_dashboard.py  # Live ncurses monitoring dashboard
+│   ├── visualize_zones.py # Terminal zone visualization
+│   ├── demo_correlation.py # Sensor correlation analysis
+│   ├── analyze_events.py  # Historical event analysis
+│   └── README.md          # Scripts documentation
 ├── notebooks/             # Jupyter notebooks for exploration
 ├── tests/                 # Unit tests
 ├── requirements.txt
 └── README.md
+```
+
+## Visualization Tools
+
+For live monitoring and demonstrations, see [scripts/README.md](scripts/README.md).
+
+**Quick start:**
+```bash
+cd scripts
+python3 zone_dashboard.py  # Live monitoring dashboard
 ```
 
 ## Quick Start

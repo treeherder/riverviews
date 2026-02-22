@@ -279,7 +279,7 @@ Prevent unbounded log growth with logrotate:
     delaycompress
     missingok
     notifempty
-    create 0644 flopro flopro
+    create 0644 riverviews riverviews
 }
 ```
 
