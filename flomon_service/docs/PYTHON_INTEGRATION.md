@@ -264,7 +264,7 @@ print(f"Max differential: {data['differential_ft'].max():.2f} ft")
 ### Recommended Directory Structure
 
 ```
-flopro/
+riverviews/
 ├── flomon_service/        # Rust daemon
 │   ├── src/
 │   ├── Cargo.toml
@@ -398,10 +398,10 @@ Example crontab:
 
 ```cron
 # Run daily flood analysis at 6 AM
-0 6 * * * cd /home/user/flopro/python_analysis && ./venv/bin/python scripts/analyze_events.py
+0 6 * * * cd /home/user/riverviews/python_analysis && ./venv/bin/python scripts/analyze_events.py
 
 # Generate weekly report every Monday at 8 AM
-0 8 * * 1 cd /home/user/flopro/python_analysis && ./venv/bin/python scripts/weekly_report.py
+0 8 * * 1 cd /home/user/riverviews/python_analysis && ./venv/bin/python scripts/weekly_report.py
 ```
 
 ### Future: REST API

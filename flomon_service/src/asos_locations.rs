@@ -56,12 +56,21 @@ pub enum MonitoringPriority {
 }
 
 impl MonitoringPriority {
-    pub fn poll_interval_minutes(&self) -> i64 {
+    pub fn poll_interval_minutes(&self) -> i32 {
         match self {
             MonitoringPriority::Critical => 15,
             MonitoringPriority::High => 60,
             MonitoringPriority::Medium => 360,
             MonitoringPriority::Low => 1440,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MonitoringPriority::Critical => "CRITICAL",
+            MonitoringPriority::High => "HIGH",
+            MonitoringPriority::Medium => "MEDIUM",
+            MonitoringPriority::Low => "LOW",
         }
     }
 }

@@ -1,4 +1,4 @@
-# FloPro - Flood Monitoring Service
+# Riverviews - Flood Monitoring Service
 
 Real-time flood monitoring system using zone-based hydrological modeling to track river conditions across multiple data sources. Combines Rust for reliable data curation with Python for statistical analysis and regression testing.
 
@@ -17,7 +17,7 @@ Real-time flood monitoring system using zone-based hydrological modeling to trac
 
 ## Vision
 
-FloPro is a generalized flood monitoring system designed to work with any river or waterway. The system consists of:
+Riverviews is a generalized flood monitoring system designed to work with any river or waterway. The system consists of:
 
 1. **Rust Monitoring Daemon** - Reliable, server-side data curation and simple alerting
 2. **Python Analysis Scripts** - Complex statistical analysis, regression, and ML modeling
@@ -27,7 +27,7 @@ The daemon ingests data from multiple sources (USGS gauges, USACE CWMS, ASOS wea
 ## Project Structure
 
 ```
-flopro/
+riverviews/
 ├── flomon_service/               # Rust monitoring daemon
 │   ├── src/
 │   │   ├── bin/
@@ -44,13 +44,21 @@ flopro/
 │   │   ├── lib.rs                # Shared library
 │   │   └── main.rs               # HTTP API server
 │   ├── scripts/
-│   │   └── generate_flood_zone_snapshots.py  # Regression analysis
+│   │   ├── generate_flood_zone_snapshots.py  # Zone regression testing
+│   │   └── README.md             # Scripts documentation
 │   ├── docs/                     # Architecture documentation
-│   ├── sql/                      # Database migrations (001-005)
+│   ├── sql/                      # Database migrations (001-006)
 │   ├── zones.toml                # Zone definitions
 │   └── Cargo.toml
-├── illinois_river_flood_warning.wiki/  # Technical documentation
-└── floml/                        # Python ML analysis package
+├── floml/                        # Python analysis package
+│   ├── floml/                    # Core library (regression, correlation, db)
+│   ├── scripts/                  # Visualization and analysis tools
+│   │   ├── zone_dashboard.py    # Live monitoring dashboard
+│   │   ├── visualize_zones.py   # Zone detail viewer
+│   │   ├── demo_correlation.py  # Correlation analysis
+│   │   └── README.md            # Tool documentation
+│   └── notebooks/                # Jupyter analysis notebooks
+└── illinois_river_flood_warning.wiki/  # Technical documentation
 ```
 
 ## Data Sources
@@ -164,7 +172,7 @@ The system organizes sensors into 7 hydrological zones from the Mississippi Rive
 
 ## Zone-Based Architecture
 
-FloPro uses a **zone-based hydrological model** rather than individual site monitoring. Sensors are organized into 7 geographic zones representing the flood propagation path to Peoria, IL:
+Riverviews uses a **zone-based hydrological model** rather than individual site monitoring. Sensors are organized into 7 geographic zones representing the flood propagation path to Peoria, IL:
 
 | Zone | Name | Lead Time | Primary Sensors | Role |
 |------|------|-----------|-----------------|------|
@@ -352,49 +360,28 @@ See [flomon_service/docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXT
 
 ## Documentation
 
-### Technical Documentation (flomon_service/docs/)
+### Quick Start Guides
 
-**Core Infrastructure:**
-- [DATABASE_SETUP.md](flomon_service/docs/DATABASE_SETUP.md) - Complete database setup guide
-- [VALIDATION_SYSTEM.md](flomon_service/docs/VALIDATION_SYSTEM.md) - Database validation and permission scripts
-- [DATA_STORAGE_STRATEGY.md](flomon_service/docs/DATA_STORAGE_STRATEGY.md) - Data storage architectural principles
-- [SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXTENSIBILITY.md) - Multi-source schema design patterns
-- [EXTENSIBLE_ARCHITECTURE.md](flomon_service/docs/EXTENSIBLE_ARCHITECTURE.md) - Data source integration patterns
+- **[floml/README.md](floml/README.md)** - Python analysis package (regression, correlation, ML)
+- **[floml/scripts/README.md](floml/scripts/README.md)** - Visualization tools and live monitoring
+- **[floml/QUICKSTART.md](floml/QUICKSTART.md)** - Get started with analysis
 
-**Data Source Integration:**
-- [ASOS_IMPLEMENTATION.md](flomon_service/docs/ASOS_IMPLEMENTATION.md) - Weather station precipitation monitoring
-- [DATA_SOURCE_VERIFICATION.md](flomon_service/docs/DATA_SOURCE_VERIFICATION.md) - Verification framework for testing data sources
-- [CWMS_IMPLEMENTATION.md](flomon_service/docs/CWMS_IMPLEMENTATION.md) - CWMS integration implementation
-- [CWMS_INTEGRATION.md](flomon_service/docs/CWMS_INTEGRATION.md) - CWMS backwater monitoring rationale
-- [TOML_CONFIGURATION.md](flomon_service/docs/TOML_CONFIGURATION.md) - CWMS TOML configuration guide
+### Technical Documentation
 
-**Analysis & Strategy:**
-- [PYTHON_INTEGRATION.md](flomon_service/docs/PYTHON_INTEGRATION.md) - Python database access for analysis
-- [REFACTORING_PLAN.md](flomon_service/docs/REFACTORING_PLAN.md) - Rust-Python separation context
-- [THRESHOLD_STRATEGY.md](flomon_service/docs/THRESHOLD_STRATEGY.md) - Threshold management approach
-- [PRE_INGESTION_STRATEGY.md](flomon_service/docs/PRE_INGESTION_STRATEGY.md) - Pre-ingestion database strategy
-- [STATION_RESILIENCE.md](flomon_service/docs/STATION_RESILIENCE.md) - Offline sensor handling
+- **[flomon_service/docs/README.md](flomon_service/docs/README.md)** - Full docs index for Rust daemon
+  - Database setup and configuration
+  - Data source integration (USGS, CWMS, ASOS)
+  - Architecture and design patterns
+  - Operational procedures
 
-### Wiki Documentation (illinois_river_flood_warning.wiki/)
+### Analysis & Regression Testing
 
-- [Home.md](illinois_river_flood_warning.wiki/Home.md) - Project overview and structure
-- [Technology-Stack.md](illinois_river_flood_warning.wiki/Technology-Stack.md) - Technology choices and rationale
-- [Data-Sources.md](illinois_river_flood_warning.wiki/Data-Sources.md) - USGS NWIS API integration
-- [Database-Architecture.md](illinois_river_flood_warning.wiki/Database-Architecture.md) - PostgreSQL design decisions
-- [Staleness-Tracking.md](illinois_river_flood_warning.wiki/Staleness-Tracking.md) - Data freshness monitoring
-- [ZONE_ENDPOINT_MIGRATION.md](illinois_river_flood_warning.wiki/ZONE_ENDPOINT_MIGRATION.md) - Zone-based API design
+- **[flomon_service/scripts/README_ZONE_SNAPSHOTS.md](flomon_service/scripts/README_ZONE_SNAPSHOTS.md)** - Zone snapshot regression
+- **[flomon_service/scripts/generate_flood_zone_snapshots.py](flomon_service/scripts/generate_flood_zone_snapshots.py)** - Snapshot generation
 
-### Project Status
+### Project Wiki
 
-- [PROJECT_STATUS.md](illinois_river_flood_warning.wiki/PROJECT_STATUS.md) - Current implementation status
-- [ARCHITECTURE_COMPARISON.md](illinois_river_flood_warning.wiki/ARCHITECTURE_COMPARISON.md) - Zone refactoring comparison
-- [DOCUMENTATION_AUDIT.md](illinois_river_flood_warning.wiki/DOCUMENTATION_AUDIT.md) - Documentation cleanup record
-- [PEAK_FLOW_SUMMARY.md](PEAK_FLOW_SUMMARY.md) - Historical flood analysis with zone framework
-
-### Analysis Scripts
-
-- [scripts/generate_flood_zone_snapshots.py](flomon_service/scripts/generate_flood_zone_snapshots.py) - Zone snapshot regression analysis
-- [scripts/README_ZONE_SNAPSHOTS.md](flomon_service/scripts/README_ZONE_SNAPSHOTS.md) - Zone snapshot documentation
+Technical notes and design decisions: [illinois_river_flood_warning.wiki/](illinois_river_flood_warning.wiki/)
 
 ### Testing
 

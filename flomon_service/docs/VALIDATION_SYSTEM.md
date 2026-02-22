@@ -137,7 +137,7 @@ flomon_service::db::connect_and_verify(&["usgs_raw", "nws"])
 
 ### ✅ Success Case
 ```
-=== Flopro Database Setup Validation ===
+=== Riverviews Database Setup Validation ===
 
 [1/8] Checking PostgreSQL installation...
 ✓ PostgreSQL 14 installed
@@ -180,7 +180,7 @@ You can now run:
 
 ### ❌ Failure Case (with remediation steps)
 ```
-=== Flopro Database Setup Validation ===
+=== Riverviews Database Setup Validation ===
 
 [1/8] Checking PostgreSQL installation...
 ✓ PostgreSQL 14 installed

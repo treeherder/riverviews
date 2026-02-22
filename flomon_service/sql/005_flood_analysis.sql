@@ -5,7 +5,7 @@
 --          across USGS, USACE, and future data sources. Enables analysis of
 --          flood precursor patterns and contributing factors.
 --
--- Author: Flopro Team
+-- Author: Riverviews Team
 -- Date: 2026-02-20
 
 \set ON_ERROR_STOP on

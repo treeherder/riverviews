@@ -29,7 +29,7 @@ floml/
 
 ```bash
 # 1. Activate virtual environment
-cd /home/fiver/projects/flopro/floml
+cd /home/fiver/projects/riverviews/floml
 source venv/bin/activate
 
 # 2. Test connection

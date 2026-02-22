@@ -15,7 +15,7 @@ Python venv is usually included by default.
 ## Installation
 
 ```bash
-cd /home/fiver/projects/flopro/floml
+cd /home/fiver/projects/riverviews/floml
 
 # Create virtual environment
 python3 -m venv venv

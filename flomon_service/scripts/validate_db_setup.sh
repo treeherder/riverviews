@@ -59,7 +59,7 @@ psql_as_postgres() {
     fi
 }
 
-echo -e "${BLUE}=== Flopro Database Setup Validation ===${NC}\n"
+echo -e "${BLUE}=== Riverviews Database Setup Validation ===${NC}\n"
 
 # Track validation status
 VALIDATION_PASSED=true

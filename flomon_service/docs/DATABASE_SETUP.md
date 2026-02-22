@@ -1,6 +1,6 @@
 # Database Setup Guide
 
-This guide provides complete instructions for setting up the PostgreSQL database required by the Flopro flood monitoring service.
+This guide provides complete instructions for setting up the PostgreSQL database required by the Riverviews flood monitoring service.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ This guide provides complete instructions for setting up the PostgreSQL database
 
 ## Authentication Methods
 
-FloPro uses **TCP/IP authentication** (password-based) instead of Unix socket peer authentication for better compatibility across environments.
+Riverviews uses **TCP/IP authentication** (password-based) instead of Unix socket peer authentication for better compatibility across environments.
 
 **TCP/IP Connection (Recommended):**
 ```bash
@@ -179,7 +179,7 @@ cargo run --bin ingest_peak_flows
 PGPASSWORD=your_password psql -h localhost -U flopro_admin -d flopro_db
 ```
 
-The validation script and FloPro application automatically use TCP/IP, so this should not occur during normal operation.
+The validation script and Riverviews application automatically use TCP/IP, so this should not occur during normal operation.
 
 ### Password Authentication Failed
 

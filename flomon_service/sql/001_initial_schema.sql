@@ -1,4 +1,4 @@
--- FloPro Database Schema - Initial Migration
+-- Riverviews Database Schema - Initial Migration
 -- Version: 001
 -- Description: USGS gauge reading tables and initial site registry
 -- 
