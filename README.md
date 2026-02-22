@@ -289,7 +289,7 @@ relevance = "MOST IMPORTANT SINGLE READING for property elevation"
 
 ### Station Registry
 
-USGS stations and CWMS locations are registered in [flomon_service/stations.toml](flomon_service/stations.toml). Legacy site-based configuration; zones are now primary.
+USGS stations are registered in [flomon_service/usgs_stations.toml](flomon_service/usgs_stations.toml). Legacy site-based configuration; zones are now primary.
 
 ### Database Schema
 

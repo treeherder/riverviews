@@ -11,8 +11,8 @@
 //! by external Python scripts that read from the curated database.
 //!
 //! Usage:
-//!   cargo run --release                    # Start daemon without HTTP endpoint
-//!   cargo run --release -- --endpoint 8080 # Start with HTTP endpoint on port 8080
+//!   cargo run --release -- verify          # Verify data source configuration
+//!   cargo run --release -- --endpoint 8080 # Start daemon with HTTP endpoint on port 8080
 //!
 //! Environment:
 //!   DATABASE_URL - PostgreSQL connection string
@@ -26,6 +26,31 @@ fn main() {
     println!("🌊 Flood Monitoring Service");
     println!("============================\n");
     
+    // Parse command-line arguments early to check for verify command
+    let args: Vec<String> = env::args().collect();
+    
+    // Check for verify command (runs without daemon initialization)
+    if args.len() > 1 && args[1] == "verify" {
+        println!("🔍 Running data source verification...\n");
+        
+        match flomon_service::verify::run_full_verification() {
+            Ok(report) => {
+                flomon_service::verify::print_summary(&report);
+                
+                // Save JSON report
+                let report_json = serde_json::to_string_pretty(&report).unwrap();
+                std::fs::write("verification_report.json", report_json).unwrap();
+                println!("\n📄 Detailed report saved to: verification_report.json");
+                
+                std::process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("❌ Verification failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
+    
     // Initialize logging system
     // Log to both console and file in the current directory
     let log_file = "./flomon_service.log";
@@ -35,8 +60,7 @@ fn main() {
     logging::init_logger(log_level, Some(log_file), console_timestamps);
     println!("📝 Logging to {}\n", log_file);
     
-    // Parse command-line arguments
-    let args: Vec<String> = env::args().collect();
+    // Parse remaining command-line arguments
     let mut endpoint_port: Option<u16> = None;
     
     let mut i = 1;
@@ -53,7 +77,9 @@ fn main() {
             }
             _ => {
                 eprintln!("Unknown argument: {}", args[i]);
-                eprintln!("Usage: {} [--endpoint PORT]", args[0]);
+                eprintln!("Usage:");
+                eprintln!("  {} verify           - Verify data source configuration", args[0]);
+                eprintln!("  {} --endpoint PORT  - Start monitoring daemon", args[0]);
                 std::process::exit(1);
             }
         }

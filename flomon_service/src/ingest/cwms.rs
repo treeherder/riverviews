@@ -18,6 +18,7 @@ const CWMS_API_BASE: &str = "https://cwms-data.usace.army.mil/cwms-data";
 #[derive(Debug, Deserialize)]
 pub struct CwmsTimeseriesResponse {
     pub name: String,
+    #[serde(rename = "office-id")]
     pub office: String,
     pub units: String,
     pub values: Option<Vec<CwmsValue>>,
@@ -39,12 +40,30 @@ pub struct CwmsCatalogResponse {
     pub entries: Option<Vec<CwmsCatalogEntry>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct CwmsValue {
-    #[serde(rename = "date-time")]
     pub date_time: i64,  // Unix timestamp in milliseconds
     pub value: f64,
     pub quality: i32,
+}
+
+impl<'de> Deserialize<'de> for CwmsValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let arr: Vec<serde_json::Value> = Vec::deserialize(deserializer)?;
+        
+        if arr.len() < 3 {
+            return Err(serde::de::Error::custom("Expected array with 3 elements"));
+        }
+        
+        Ok(CwmsValue {
+            date_time: arr[0].as_i64().ok_or_else(|| serde::de::Error::custom("Invalid timestamp"))?,
+            value: arr[1].as_f64().ok_or_else(|| serde::de::Error::custom("Invalid value"))?,
+            quality: arr[2].as_i64().ok_or_else(|| serde::de::Error::custom("Invalid quality"))? as i32,
+        })
+    }
 }
 
 #[derive(Debug, Clone)]

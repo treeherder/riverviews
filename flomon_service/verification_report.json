@@ -1,0 +1,405 @@
+{
+  "timestamp": "2026-02-22T03:15:05.238401483+00:00",
+  "usgs_results": [
+    {
+      "site_code": "05568500",
+      "name": "Illinois River at Kingston Mines, IL",
+      "status": "Success",
+      "site_exists": true,
+      "parameters_available": [
+        "00060",
+        "00065"
+      ],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [],
+      "sample_data_count": 28,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05567500",
+      "name": "Illinois River at Peoria, IL",
+      "status": "Success",
+      "site_exists": true,
+      "parameters_available": [
+        "00060",
+        "00065"
+      ],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [],
+      "sample_data_count": 28,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05568000",
+      "name": "Illinois River at Chillicothe, IL",
+      "status": "Success",
+      "site_exists": true,
+      "parameters_available": [
+        "00060",
+        "00065"
+      ],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [],
+      "sample_data_count": 28,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05557000",
+      "name": "Illinois River at Henry, IL",
+      "status": "Failed",
+      "site_exists": true,
+      "parameters_available": [],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [
+        "00060",
+        "00065"
+      ],
+      "sample_data_count": 0,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05552500",
+      "name": "Illinois River at Marseilles, IL",
+      "status": "Success",
+      "site_exists": true,
+      "parameters_available": [
+        "00060",
+        "00065"
+      ],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [],
+      "sample_data_count": 20,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05568580",
+      "name": "Mackinaw River near Green Valley, IL",
+      "status": "Failed",
+      "site_exists": true,
+      "parameters_available": [],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [
+        "00060",
+        "00065"
+      ],
+      "sample_data_count": 0,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05570000",
+      "name": "Spoon River at Seville, IL",
+      "status": "Success",
+      "site_exists": true,
+      "parameters_available": [
+        "00060",
+        "00065"
+      ],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [],
+      "sample_data_count": 28,
+      "peak_flow_available": true,
+      "error_message": null
+    },
+    {
+      "site_code": "05536890",
+      "name": "Chicago Sanitary & Ship Canal at Romeoville, IL",
+      "status": "Failed",
+      "site_exists": true,
+      "parameters_available": [
+        "00060",
+        "00065"
+      ],
+      "parameters_expected": [
+        "00060",
+        "00065"
+      ],
+      "parameters_missing": [],
+      "sample_data_count": 0,
+      "peak_flow_available": true,
+      "error_message": null
+    }
+  ],
+  "cwms_results": [
+    {
+      "name": "Illinois River at Peoria Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "Peoria-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Illinois River at Starved Rock Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "Starved-Rock-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Illinois River at Marseilles Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "Marseilles-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Illinois River at Dresden Island Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "Dresden-Island-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Illinois River at Brandon Road Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "Brandon-Road-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Chicago Sanitary and Ship Canal at Lockport Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "Lockport-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Illinois River at New LaGrange Lock and Dam",
+      "office": "MVR",
+      "cwms_location": "LaGrange-Pool",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Mississippi River at Grafton, IL",
+      "office": "MVS",
+      "cwms_location": "Grafton",
+      "status": "PartialSuccess",
+      "catalog_found": true,
+      "timeseries_discovered": [
+        "Grafton-Mississippi.Elev.Inst.30Minutes.0.NGVD-29",
+        "Grafton-Mississippi.Elev.Inst.30Minutes.0.lrgsShef-raw",
+        "Grafton-Mississippi.Elev.Inst.30Minutes.0.lrgsShef-rev",
+        "Grafton-Mississippi.Flow.Inst.0.0.Usgs-raw",
+        "Grafton-Mississippi.Flow.Inst.1Hour.0.Usgs-raw",
+        "Grafton-Mississippi.Flow.Inst.30Minutes.0.RatingCOE",
+        "Grafton-Mississippi.Flow.Inst.30Minutes.0.RatingNWS",
+        "Grafton-Mississippi.Flow.Inst.30Minutes.0.Usgs-raw",
+        "Grafton-Mississippi.Flow.Inst.6Hours.0.NCRFCShef-PZ",
+        "Grafton-Mississippi.Precip.Inst.30Minutes.0.lrgsShef-raw",
+        "Grafton-Mississippi.Precip.Inst.30Minutes.0.lrgsShef-rev",
+        "Grafton-Mississippi.Precip.Total.1Hour.1Hour.lrgsShef-rev",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.CWMS-Forecast-NoQPF",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.CWMS-Forecast-QPF",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.historic-data-11",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.historic-data-22",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.historic-data-33",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.historic-data-merge",
+        "Grafton-Mississippi.Stage.Inst.1Hour.0.historic-to-raw",
+        "Grafton-Mississippi.Stage.Inst.30Minutes.0.lrgsShef-raw",
+        "Grafton-Mississippi.Stage.Inst.30Minutes.0.lrgsShef-rev",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CA",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CB",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CC",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CD",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CJ",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CL",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CM",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CN",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CO",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CV",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CW",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CX",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CY",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-CZ",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.NCRFCShef-PZ",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.RVDShef-FF",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.RVDShef-PZ",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.RVFShef-CF",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.RVFShef-FF",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.RVFShef-FX",
+        "Grafton-Mississippi.Stage.Inst.6Hours.0.RVFShef-PZ",
+        "Grafton-Mississippi.Stage.Inst.~1Day.0.MVDhist-rev",
+        "Grafton-Mississippi.Stage.Inst.~1Day.0.datman-rev",
+        "Grafton-Mississippi.Stage.Inst.~1Day.0.netmiss-fcst",
+        "Grafton-Mississippi.Stage.Inst.~1Day.0.netmiss-fcst-versioned",
+        "Grafton-Mississippi.Volt-Battery.Inst.30Minutes.0.lrgsShef-raw"
+      ],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": null
+    },
+    {
+      "name": "Mississippi River at Alton, IL",
+      "office": "MVS",
+      "cwms_location": "Alton-IL",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    },
+    {
+      "name": "Mississippi River at Hannibal, MO",
+      "office": "MVS",
+      "cwms_location": "Hannibal-MO",
+      "status": "Failed",
+      "catalog_found": false,
+      "timeseries_discovered": [],
+      "sample_data_available": false,
+      "sample_data_count": 0,
+      "error_message": "No timeseries found in catalog"
+    }
+  ],
+  "asos_results": [
+    {
+      "station_id": "KPIA",
+      "name": "Peoria International Airport",
+      "status": "Success",
+      "api_responsive": true,
+      "sample_data_count": 50,
+      "data_types_available": [
+        "temperature",
+        "precipitation",
+        "wind",
+        "pressure"
+      ],
+      "error_message": null
+    },
+    {
+      "station_id": "KBMI",
+      "name": "Central Illinois Regional Airport (Bloomington-Normal)",
+      "status": "Success",
+      "api_responsive": true,
+      "sample_data_count": 50,
+      "data_types_available": [
+        "temperature",
+        "precipitation",
+        "wind",
+        "pressure"
+      ],
+      "error_message": null
+    },
+    {
+      "station_id": "KSPI",
+      "name": "Abraham Lincoln Capital Airport (Springfield)",
+      "status": "Success",
+      "api_responsive": true,
+      "sample_data_count": 47,
+      "data_types_available": [
+        "temperature",
+        "precipitation",
+        "wind",
+        "pressure"
+      ],
+      "error_message": null
+    },
+    {
+      "station_id": "KGBG",
+      "name": "Galesburg Airport",
+      "status": "Success",
+      "api_responsive": true,
+      "sample_data_count": 12,
+      "data_types_available": [
+        "temperature",
+        "precipitation",
+        "wind"
+      ],
+      "error_message": null
+    },
+    {
+      "station_id": "KORD",
+      "name": "Chicago O'Hare International Airport",
+      "status": "Success",
+      "api_responsive": true,
+      "sample_data_count": 60,
+      "data_types_available": [
+        "temperature",
+        "precipitation",
+        "wind",
+        "pressure"
+      ],
+      "error_message": null
+    },
+    {
+      "station_id": "KPWK",
+      "name": "Chicago Executive Airport (Wheeling)",
+      "status": "Success",
+      "api_responsive": true,
+      "sample_data_count": 52,
+      "data_types_available": [
+        "temperature",
+        "precipitation",
+        "wind",
+        "pressure"
+      ],
+      "error_message": null
+    }
+  ],
+  "summary": {
+    "usgs_total": 8,
+    "usgs_working": 5,
+    "usgs_failed": 3,
+    "cwms_total": 10,
+    "cwms_working": 1,
+    "cwms_failed": 9,
+    "asos_total": 6,
+    "asos_working": 6,
+    "asos_failed": 0
+  }
+}

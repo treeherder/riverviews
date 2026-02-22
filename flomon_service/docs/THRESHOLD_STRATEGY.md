@@ -12,7 +12,7 @@ Major Flood      → 24.0 ft  (major flooding)
 ```
 
 These are stored in:
-- `stations.toml` configuration
+- `usgs_stations.toml` configuration
 - `nws.flood_thresholds` database table
 
 ### Future: ML-Discovered Thresholds

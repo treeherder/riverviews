@@ -92,7 +92,7 @@ impl Daemon {
         self.stations = stations::load_stations();
         
         if self.stations.is_empty() {
-            return Err("No stations configured in stations.toml".into());
+            return Err("No stations configured in usgs_stations.toml".into());
         }
         
         // Load CWMS locations from TOML
@@ -584,19 +584,8 @@ impl Daemon {
         let mut inserted = 0;
         
         for obs in observations {
-            // Convert numeric fields to Decimal for PostgreSQL
-            let temp_decimal = obs.temp_f.and_then(|v| Decimal::from_f64_retain(v));
-            let dewpoint_decimal = obs.dewpoint_f.and_then(|v| Decimal::from_f64_retain(v));
-            let humidity_decimal = obs.relative_humidity.and_then(|v| Decimal::from_f64_retain(v));
-            let wind_dir_decimal = obs.wind_direction_deg.and_then(|v| Decimal::from_f64_retain(v));
-            let wind_speed_decimal = obs.wind_speed_knots.and_then(|v| Decimal::from_f64_retain(v));
-            let wind_gust_decimal = obs.wind_gust_knots.and_then(|v| Decimal::from_f64_retain(v));
-            let precip_decimal = obs.precip_1hr_in.and_then(|v| Decimal::from_f64_retain(v));
-            let pressure_decimal = obs.pressure_mb.and_then(|v| Decimal::from_f64_retain(v));
-            let visibility_decimal = obs.visibility_mi.and_then(|v| Decimal::from_f64_retain(v));
-            
-            // Determine data source based on which fields are populated
-            let data_source = if obs.precip_1hr_in.is_some() { "IEM_CURRENT" } else { "IEM_1MIN" };
+            // Determine data source
+            let data_source = "IEM_ASOS";
             
             let rows_affected = client.execute(
                 "INSERT INTO asos_observations 
@@ -608,15 +597,15 @@ impl Daemon {
                 &[
                     &obs.station_id,
                     &obs.timestamp,
-                    &temp_decimal,
-                    &dewpoint_decimal,
-                    &humidity_decimal,
-                    &wind_dir_decimal,
-                    &wind_speed_decimal,
-                    &wind_gust_decimal,
-                    &precip_decimal,
-                    &pressure_decimal,
-                    &visibility_decimal,
+                    &obs.temp_f,
+                    &obs.dewpoint_f,
+                    &obs.relative_humidity,
+                    &obs.wind_direction_deg,
+                    &obs.wind_speed_knots,
+                    &obs.wind_gust_knots,
+                    &obs.precip_1hr_in,
+                    &obs.pressure_mb,
+                    &obs.visibility_mi,
                     &obs.sky_condition,
                     &obs.weather_codes,
                     &data_source,

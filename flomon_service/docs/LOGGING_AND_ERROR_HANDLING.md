@@ -165,7 +165,7 @@ psql -U flopro_admin -d flopro_db -c \
 **Resolution:**
 - **Temporary outage** (<48 hours): Service will auto-recover and backfill when station returns
 - **Extended outage** (>48 hours): Monitor USGS site status page for restoration timeline
-- **Permanent decommission**: Remove from `stations.toml` and document in changelog
+- **Permanent decommission**: Remove from `usgs_stations.toml` and document in changelog
 
 ### Scenario 3: CWMS Location Returns No Timeseries
 
@@ -360,7 +360,7 @@ EOF
 
 If station is permanently offline:
 ```toml
-# Comment out in stations.toml
+# Comment out in usgs_stations.toml
 # [[station]]
 # site_code = "05557000"  # Decommissioned 2026-02-15
 # name = "Illinois River at Henry, IL"

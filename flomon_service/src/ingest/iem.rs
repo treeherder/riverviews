@@ -128,7 +128,7 @@ pub fn fetch_current(
 
 /// Fetch recent observations (last N hours)
 ///
-/// Uses the ASOS 1-minute endpoint for detailed precipitation tracking
+/// Uses the ASOS endpoint for comprehensive weather data
 pub fn fetch_recent_precip(
     client: &reqwest::blocking::Client,
     station_id: &str,
@@ -139,19 +139,17 @@ pub fn fetch_recent_precip(
     let begin = end - chrono::Duration::hours(hours);
     
     let url = format!(
-        "{}/cgi-bin/request/asos1min.py?station={}&tz=UTC&year1={}&month1={}&day1={}&hour1={}&minute1={}&year2={}&month2={}&day2={}&hour2={}&minute2={}&vars=tmpf&vars=dwpf&vars=sknt&vars=drct&vars=p01m&sample=1min&what=view&delim=comma&gis=no",
+        "{}/cgi-bin/request/asos.py?station={}&data=all&year1={}&month1={}&day1={}&hour1={}&year2={}&month2={}&day2={}&hour2={}&tz=UTC&format=onlycomma&latlon=no&elev=no&missing=null&trace=null&direct=no",
         IEM_BASE_URL,
         station_id,
         begin.format("%Y"),
         begin.format("%m"),
         begin.format("%d"),
         begin.format("%H"),
-        begin.format("%M"),
         end.format("%Y"),
         end.format("%m"),
         end.format("%d"),
-        end.format("%H"),
-        end.format("%M")
+        end.format("%H")
     );
     
     let response = client
@@ -167,7 +165,7 @@ pub fn fetch_recent_precip(
 }
 
 /// Parse IEM ASOS CSV response
-fn parse_asos_csv(csv: &str, station_id: &str) -> Result<Vec<AsosObservation>, Box<dyn std::error::Error>> {
+fn parse_asos_csv(csv: &str, _station_id: &str) -> Result<Vec<AsosObservation>, Box<dyn std::error::Error>> {
     let mut observations = Vec::new();
     
     for (i, line) in csv.lines().enumerate() {
@@ -176,40 +174,76 @@ fn parse_asos_csv(csv: &str, station_id: &str) -> Result<Vec<AsosObservation>, B
         }
         
         let fields: Vec<&str> = line.split(',').collect();
-        if fields.len() < 6 {
-            continue;
+        if fields.len() < 21 {
+            continue;  // Skip incomplete rows
         }
         
-        // Parse timestamp (format: "2026-02-21 08:30")
+        // Helper to parse values that might be "null"
+        let parse_field = |s: &str| -> Option<f64> {
+            if s.trim() == "null" || s.trim().is_empty() {
+                None
+            } else {
+                s.trim().parse().ok()
+            }
+        };
+        
+        // Parse timestamp (format: "2026-02-21 19:54")
         let timestamp_str = fields[1];
         let timestamp = NaiveDateTime::parse_from_str(timestamp_str, "%Y-%m-%d %H:%M")
             .ok()
             .and_then(|dt| Some(DateTime::from_naive_utc_and_offset(dt, Utc)))
             .ok_or("Failed to parse timestamp")?;
         
-        let temp_f = fields[2].parse().ok();
-        let dewpoint_f = fields[3].parse().ok();
-        let wind_speed_knots = fields[4].parse().ok();
-        let wind_direction_deg = fields[5].parse().ok();
-        let precip_1min_in: Option<f64> = if fields.len() > 6 { fields[6].parse().ok() } else { None };
+        let station_id = fields[0].to_string();
+        let temp_f = parse_field(fields[2]);
+        let dewpoint_f = parse_field(fields[3]);
+        let relative_humidity = parse_field(fields[4]);
+        let wind_direction_deg = parse_field(fields[5]);
+        let wind_speed_knots = parse_field(fields[6]);
+        let precip_1hr_in = parse_field(fields[7]);
+        let altimeter_in_hg = parse_field(fields[8]);
+        let pressure_mb = parse_field(fields[9]);
+        let visibility_mi = parse_field(fields[10]);
+        let wind_gust_knots = parse_field(fields[11]);
         
-        // Aggregate 1-minute precip to hourly for consistency
-        let precip_1hr_in = precip_1min_in.map(|p| p * 60.0);
+        // Sky conditions (combine up to 4 layers)
+        let sky_layers: Vec<String> = (12..16)
+            .filter_map(|i| {
+                let cond = fields[i].trim();
+                if cond != "null" && !cond.is_empty() {
+                    Some(cond.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let sky_condition = if sky_layers.is_empty() {
+            None
+        } else {
+            Some(sky_layers.join("/"))
+        };
+        
+        // Weather codes
+        let weather_codes = if fields[20].trim() == "null" || fields[20].trim().is_empty() {
+            None
+        } else {
+            Some(fields[20].to_string())
+        };
         
         observations.push(AsosObservation {
-            station_id: station_id.to_string(),
+            station_id,
             timestamp,
             temp_f,
             dewpoint_f,
-            relative_humidity: None, // Not in 1-minute data
+            relative_humidity,
             wind_direction_deg,
             wind_speed_knots,
-            wind_gust_knots: None,
+            wind_gust_knots,
             precip_1hr_in,
-            pressure_mb: None,
-            visibility_mi: None,
-            sky_condition: None,
-            weather_codes: None,
+            pressure_mb,
+            visibility_mi,
+            sky_condition,
+            weather_codes,
         });
     }
     

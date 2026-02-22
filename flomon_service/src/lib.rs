@@ -5,7 +5,7 @@
 /// ```text
 /// flomon_service
 /// +-- model       - shared data types (GaugeReading, FloodThresholds, NwisError, ...)
-/// +-- config      - station registry configuration loader (stations.toml)
+/// +-- config      - station registry configuration loader (usgs_stations.toml)
 /// +-- stations    - USGS site code registry with NWS flood stage thresholds
 /// +-- zones       - Hydrological zone-based sensor grouping (zones.toml)
 /// +-- usace_locations - USACE/CWMS location registry (usace_iem.toml)
@@ -39,4 +39,5 @@ pub mod model;
 pub mod monitor;
 pub mod stations;
 pub mod usace_locations;
+pub mod verify;
 pub mod zones;

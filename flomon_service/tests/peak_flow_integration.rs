@@ -147,7 +147,7 @@ fn test_parse_rdb_produces_valid_records() {
 fn test_identify_flood_events_with_peoria_thresholds() {
     let records = parse_rdb(TEST_RDB).unwrap();
     
-    // Peoria Pool thresholds from stations.toml
+    // Peoria Pool thresholds from usgs_stations.toml
     let thresholds = FloodThresholds {
         flood_stage_ft: 18.0,
         moderate_flood_stage_ft: 20.0,
@@ -344,7 +344,7 @@ fn test_severity_enum_values_accepted_by_database() {
 
 #[test]
 fn test_stations_toml_thresholds_match_database_expectations() {
-    // Load thresholds from stations.toml
+    // Load thresholds from usgs_stations.toml
     let stations = load_config();
     
     // Find stations with thresholds

@@ -1,4 +1,4 @@
-/// Station configuration loader - parses stations.toml
+/// Station configuration loader - parses usgs_stations.toml
 ///
 /// Separates station metadata from code, making it easy to update
 /// thresholds, add stations, or adjust travel time estimates without
@@ -10,7 +10,7 @@ use std::fs;
 
 use crate::model::FloodThresholds;
 
-/// Station metadata loaded from stations.toml configuration file
+/// Station metadata loaded from usgs_stations.toml configuration file
 #[derive(Debug, Clone, Deserialize)]
 pub struct StationConfig {
     pub site_code: String,
@@ -64,7 +64,7 @@ struct StationRegistry {
     station: Vec<StationConfig>,
 }
 
-/// Loads station registry from stations.toml configuration file.
+/// Loads station registry from usgs_stations.toml configuration file.
 ///
 /// # Panics
 /// Panics if the configuration file is missing, malformed, or contains
@@ -72,10 +72,10 @@ struct StationRegistry {
 /// valid station metadata.
 ///
 /// # File Location
-/// Expects `stations.toml` in the current working directory (project root
+/// Expects `usgs_stations.toml` in the current working directory (project root
 /// when running via `cargo run`).
 pub fn load_config() -> Vec<StationConfig> {
-    let config_path = "stations.toml";
+    let config_path = "usgs_stations.toml";
     
     let contents = fs::read_to_string(config_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {}", config_path, e));

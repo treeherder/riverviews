@@ -178,7 +178,7 @@ The same pattern applies to:
 
 - **IEM ASOS stations** (already in TOML, code TODO)
 - **NWS forecast points** (add `[[nws_stations]]` section)
-- **USGS gauge supplements** (additional metadata beyond stations.toml)
+- **USGS gauge supplements** (additional metadata beyond usgs_stations.toml)
 
 All follow: **TOML → Runtime Discovery → Polling**
 

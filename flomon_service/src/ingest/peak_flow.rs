@@ -207,7 +207,7 @@ pub fn parse_rdb(rdb_text: &str) -> Result<Vec<PeakFlowRecord>, String> {
 ///
 /// # Arguments
 /// * `records` - Parsed peak flow records
-/// * `thresholds` - Station flood thresholds (from stations.toml)
+/// * `thresholds` - Station flood thresholds (from usgs_stations.toml)
 ///
 /// # Returns
 /// Vector of flood events for database insertion

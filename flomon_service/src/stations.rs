@@ -10,7 +10,7 @@
 ///
 /// ## Configuration-Based Registry
 /// 
-/// Station metadata is now loaded from `stations.toml` configuration file,
+/// Station metadata is now loaded from `usgs_stations.toml` configuration file,
 /// allowing threshold updates and station additions without recompilation.
 /// Use `load_stations()` to get the runtime station list, or
 /// `load_stations_map()` for O(1) lookups by site code.
@@ -31,7 +31,7 @@ pub use crate::model::{PARAM_DISCHARGE, PARAM_STAGE};
 
 /// Metadata for a single USGS gauge station.
 ///
-/// This is a runtime representation combining data from stations.toml
+/// This is a runtime representation combining data from usgs_stations.toml
 /// and providing a consistent interface for station queries.
 #[derive(Debug, Clone)]
 pub struct Station {
@@ -61,13 +61,13 @@ pub struct Station {
     pub travel_time_to_peoria_hours: f64,
 }
 
-/// Loads all monitored stations from stations.toml configuration.
+/// Loads all monitored stations from usgs_stations.toml configuration.
 ///
 /// This is the primary way to access the station registry. Use this
 /// instead of a static global to allow runtime configuration updates.
 ///
 /// # Panics
-/// Panics if stations.toml is missing or malformed.
+/// Panics if usgs_stations.toml is missing or malformed.
 pub fn load_stations() -> Vec<Station> {
     config::load_config()
         .into_iter()

@@ -75,7 +75,7 @@ fn test_daemon_fails_gracefully_when_schema_missing() {
 
 #[test]
 fn test_daemon_loads_station_registry_on_startup() {
-    // The daemon should load and validate station configuration from stations.toml
+    // The daemon should load and validate station configuration from usgs_stations.toml
     let stations = stations::load_stations();
     
     assert!(

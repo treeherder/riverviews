@@ -178,7 +178,7 @@ let flood_events = peak_flow::identify_flood_events(&records, &thresholds)?;
 
 **Station Configuration:**
 ```toml
-# stations.toml
+# usgs_stations.toml
 [[station]]
 site_code = "05568500"
 name = "Illinois River at Kingston Mines, IL"
