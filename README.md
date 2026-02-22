@@ -88,15 +88,23 @@ flopro/
 **Source:** Iowa Environmental Mesonet (IEM) ASOS/AWOS network
 
 **Data Types:**
-- 1-minute precipitation observations
-- Accumulated rainfall (6hr, 24hr windows)
-- Station metadata and quality codes
+- Hourly precipitation observations (1-hour accumulation)
+- Temperature, dewpoint, humidity
+- Wind speed, direction, and gusts
+- Atmospheric pressure and visibility
+- Sky conditions and present weather codes
 
-**Use Case:** Precipitation is the primary driver of tributary flooding - monitor basin rainfall for flood prediction
+**Use Case:** Precipitation is the primary driver of tributary flooding - monitor basin rainfall for flood prediction. Temperature and pressure support severe weather detection.
 
-**Stations:** KPIA (Peoria), KBMI (Bloomington), KSPI (Springfield), KGBG (Galesburg), KORD (O'Hare), KPWK (Wheeling)
+**Stations:** 
+- KPIA (Peoria) - Primary local precipitation (15-min polling)
+- KBMI (Bloomington) - Mackinaw River basin (60-min)
+- KSPI (Springfield) - Sangamon River basin (60-min)
+- KGBG (Galesburg) - Spoon River basin (60-min)
+- KORD (O'Hare) - Des Plaines River basin (6-hr)
+- KPWK (Wheeling) - Des Plaines River tributary (6-hr)
 
-**Status:** ✅ Schema implemented (sql/006_asos_weather.sql), 6 stations configured with basin-specific thresholds
+**Status:** ✅ Fully operational - API client implemented, schema deployed (sql/006_iem_asos.sql), 6/6 stations verified, 16 integration tests passing
 
 ### Implemented: USACE Corps Water Management System
 
@@ -220,6 +228,21 @@ echo "DATABASE_URL=postgresql://flopro_admin:your_password@localhost/flopro_db" 
 ./flomon_service/scripts/validate_db_setup.sh
 ```
 
+### Verify Data Sources
+
+**Test configuration against live APIs:**
+```bash
+cd flomon_service
+cargo run --release -- verify
+```
+
+Verifies all configured data sources are operational:
+- USGS: Tests real-time API access for all configured gauges
+- CWMS: Queries USACE catalog for lock/dam timeseries availability
+- ASOS: Fetches recent observations from all weather stations
+
+Generates verification report showing which stations are working and data availability. See [docs/DATA_SOURCE_VERIFICATION.md](flomon_service/docs/DATA_SOURCE_VERIFICATION.md) for details.
+
 ### Historical Data Ingestion
 
 **USGS gauge data (1939-present):**
@@ -289,7 +312,12 @@ relevance = "MOST IMPORTANT SINGLE READING for property elevation"
 
 ### Station Registry
 
-USGS stations are registered in [flomon_service/usgs_stations.toml](flomon_service/usgs_stations.toml). Legacy site-based configuration; zones are now primary.
+**Data source configurations:**
+- [usgs_stations.toml](flomon_service/usgs_stations.toml) - USGS gauge stations with flood thresholds
+- [iem_asos.toml](flomon_service/iem_asos.toml) - ASOS weather stations with basin assignments
+- [usace_iem.toml](flomon_service/usace_iem.toml) - USACE CWMS locations (lock/dam pools)
+
+Legacy site-based configuration; [zones.toml](flomon_service/zones.toml) is now primary for monitoring organization.
 
 ### Database Schema
 
@@ -309,12 +337,15 @@ soil.*       -- Soil moisture and saturation (planned)
 - `003_flood_metadata.sql` - NWS flood thresholds and historical events
 - `004_usace_cwms.sql` - CWMS locations, timeseries, backwater event detection
 - `005_flood_analysis.sql` - Flood analysis tables and zone views
+- `006_iem_asos.sql` - ASOS weather observations and precipitation summaries
 
 **Key tables:**
 - `usgs_raw.gauge_readings` - Time-series discharge and stage (87 years × 15min resolution)
 - `nws.flood_events` - Historical floods with crest times and peak stages (118 events)
 - `usace.cwms_timeseries` - Mississippi/Illinois lock data for backwater detection
 - `usace.backwater_events` - Detected backwater floods with severity classification
+- `asos_observations` - Weather station observations (temperature, precipitation, wind, pressure)
+- `asos_precip_summary` - Precipitation aggregations for flood risk thresholds
 - `flood_analysis.zone_snapshots` - Zone status at historical flood crests
 
 See [flomon_service/docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXTENSIBILITY.md) for schema design patterns.
@@ -332,6 +363,7 @@ See [flomon_service/docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXT
 
 **Data Source Integration:**
 - [ASOS_IMPLEMENTATION.md](flomon_service/docs/ASOS_IMPLEMENTATION.md) - Weather station precipitation monitoring
+- [DATA_SOURCE_VERIFICATION.md](flomon_service/docs/DATA_SOURCE_VERIFICATION.md) - Verification framework for testing data sources
 - [CWMS_IMPLEMENTATION.md](flomon_service/docs/CWMS_IMPLEMENTATION.md) - CWMS integration implementation
 - [CWMS_INTEGRATION.md](flomon_service/docs/CWMS_INTEGRATION.md) - CWMS backwater monitoring rationale
 - [TOML_CONFIGURATION.md](flomon_service/docs/TOML_CONFIGURATION.md) - CWMS TOML configuration guide
@@ -363,6 +395,26 @@ See [flomon_service/docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXT
 
 - [scripts/generate_flood_zone_snapshots.py](flomon_service/scripts/generate_flood_zone_snapshots.py) - Zone snapshot regression analysis
 - [scripts/README_ZONE_SNAPSHOTS.md](flomon_service/scripts/README_ZONE_SNAPSHOTS.md) - Zone snapshot documentation
+
+### Testing
+
+**Run all tests:**
+```bash
+cd flomon_service
+cargo test
+```
+
+**Integration test suites:**
+- `tests/asos_integration.rs` - ASOS weather station data collection and storage (16 tests)
+- `tests/data_source_verification.rs` - Live API verification for USGS/CWMS/ASOS (4 tests)
+- `tests/daemon_lifecycle.rs` - Daemon startup and monitoring behavior (13 tests)
+- `tests/peak_flow_integration.rs` - Historical flood analysis integration (8 tests)
+
+**Test coverage:**
+- 78 unit tests (library code)
+- 41 integration tests (end-to-end workflows)
+- All ASOS stations verified operational (6/6)
+- 5/8 USGS stations verified (3 decommissioned)
 
 ---
 
