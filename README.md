@@ -17,12 +17,8 @@ Real-time flood monitoring system using zone-based hydrological modeling to trac
 
 ## Vision
 
-Riverviews is a generalized flood monitoring system designed to work with any river or waterway. The system consists of:
+Riverviews is a generalized flood monitoring system designed to work with any river or waterway. Right now, the system has two major elements: firstly, there is a daemon service that is intended to run full-time as an online service.  flomon_service  is responsible for injesting data from the various data sources and storing it in postgres, validating and curating - checking that it is current, and ensuring that the data in general is as complete and well-labled as possible. flomon_service also provides an endpoint data stream for live data, and a simple alerting script based on rate-of-change and predetermined thresholds.  FloML is a package that holds mainly python-based scripts for analysis of the data provided by flomon_service, interacting with the endpoint and, eventually dynamically configuring the thresholds set in flomon_service. FloML additionally provides a dashboard view for use in human-monitoring live conditions and eventually querying views on past events.
 
-1. **Rust Monitoring Daemon** - Reliable, server-side data curation and simple alerting
-2. **Python Analysis Scripts** - Complex statistical analysis, regression, and ML modeling
-
-The daemon ingests data from multiple sources (USGS gauges, USACE CWMS, ASOS weather stations, NWS events), validates and curates it in PostgreSQL, and provides zone-based monitoring through an HTTP API. Python scripts perform complex analysis on the curated data including historical flood characterization and regression testing.
 
 ## Project Structure
 
@@ -58,7 +54,7 @@ riverviews/
 │   │   ├── demo_correlation.py  # Correlation analysis
 │   │   └── README.md            # Tool documentation
 │   └── notebooks/                # Jupyter analysis notebooks
-└── illinois_river_flood_warning.wiki/  # Technical documentation
+└── riverviews.wiki/  # Technical documentation
 ```
 
 ## Data Sources
@@ -166,13 +162,8 @@ riverviews/
 - Documented flood history (1993, 2013, 2019)
 
 **Zone-Based Monitoring:**
-The system organizes sensors into 7 hydrological zones from the Mississippi River (backwater source) through the Illinois River basin to the Chicago area. Each zone has defined lead times (0-120 hours) for flood prediction at the Peoria property zone. See [Zone-Based Architecture](#zone-based-architecture) below.
+The system organizes sensors into 7 hydrological zones from the Mississippi River (backwater source) through the Illinois River basin to the Chicago area. Each zone has defined lead times (0-120 hours) for flood prediction at the Peoria property zone. Sensors are organized into geographic zones representing the flood propagation path:
 
----
-
-## Zone-Based Architecture
-
-Riverviews uses a **zone-based hydrological model** rather than individual site monitoring. Sensors are organized into 7 geographic zones representing the flood propagation path to Peoria, IL:
 
 | Zone | Name | Lead Time | Primary Sensors | Role |
 |------|------|-----------|-----------------|------|
@@ -196,177 +187,15 @@ Riverviews uses a **zone-based hydrological model** rather than individual site 
 - `GET /status` - Overall basin flood status across all zones
 - `GET /backwater` - Backwater flood risk analysis
 
-See [flomon_service/zones.toml](flomon_service/zones.toml) for complete zone definitions and [illinois_river_flood_warning.wiki/ZONE_ENDPOINT_MIGRATION.md](illinois_river_flood_warning.wiki/ZONE_ENDPOINT_MIGRATION.md) for API documentation.
+See [flomon_service/zones.toml](flomon_service/zones.toml) for complete zone definitions and [riverviews.wiki/ZONE_ENDPOINT_MIGRATION.md](riverviews.wiki/ZONE_ENDPOINT_MIGRATION.md) for API documentation.
 
 ---
-
-## Getting Started
-
-### Prerequisites
-
-- Rust 1.70+ (Edition 2024)
-- PostgreSQL 14+
-- USGS NWIS API access (no key required, rate-limited)
-
-### Database Setup
-
-See [flomon_service/docs/DATABASE_SETUP.md](flomon_service/docs/DATABASE_SETUP.md) for complete instructions.
-
-**Quick start:**
-```bash
-# Create database and user
-sudo -u postgres psql <<SQL
-CREATE DATABASE flopro_db;
-CREATE USER flopro_admin WITH PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE flopro_db TO flopro_admin;
-SQL
-
-# Apply migrations
-for f in flomon_service/sql/*.sql; do
-  sudo -u postgres psql -d flopro_db -f "$f"
-done
-
-# Grant permissions
-sudo -u postgres psql -d flopro_db -f flomon_service/scripts/grant_permissions.sql
-
-# Configure connection
-echo "DATABASE_URL=postgresql://flopro_admin:your_password@localhost/flopro_db" > flomon_service/.env
-
-# Validate setup
-./flomon_service/scripts/validate_db_setup.sh
-```
-
-### Verify Data Sources
-
-**Test configuration against live APIs:**
-```bash
-cd flomon_service
-cargo run --release -- verify
-```
-
-Verifies all configured data sources are operational:
-- USGS: Tests real-time API access for all configured gauges
-- CWMS: Queries USACE catalog for lock/dam timeseries availability
-- ASOS: Fetches recent observations from all weather stations
-
-Generates verification report showing which stations are working and data availability. See [docs/DATA_SOURCE_VERIFICATION.md](flomon_service/docs/DATA_SOURCE_VERIFICATION.md) for details.
-
-### Historical Data Ingestion
-
-**USGS gauge data (1939-present):**
-```bash
-cd flomon_service
-cargo run --bin historical_ingest
-```
-- Phase 1: Daily values from Oct 1939 to ~125 days ago
-- Phase 2: 15-minute values for last 120 days
-- ~692,000 readings loaded in 4-5 minutes
-- State tracked in `historical_ingest_state.json`
-
-**CWMS backwater monitoring:**
-```bash
-cargo run --bin ingest_cwms_historical
-```
-- Mississippi River stages (Grafton, Alton, Hannibal)
-- Illinois River lock/dam data (LaGrange, Peoria, Starved Rock)
-
-**NWS peak flow events:**
-```bash
-cargo run --bin ingest_peak_flows
-```
-- 118 historical flood events (1993-2026)
-- Annual peak discharge records
-
-### Run HTTP API Server
-
-```bash
-cd flomon_service
-cargo run --release -- --endpoint 8080
-```
-
-**Available endpoints:**
-- `http://localhost:8080/zones` - List all monitoring zones
-- `http://localhost:8080/zone/2` - Peoria property zone status
-- `http://localhost:8080/status` - Basin-wide flood status
-- `http://localhost:8080/backwater` - Backwater risk analysis
-- `http://localhost:8080/health` - Service health check
-
----
-
-## Configuration
-
-### Zone Definitions
-
-Sensor zones are defined in [flomon_service/zones.toml](flomon_service/zones.toml). Each zone includes:
-- Geographic extent and hydrological role
-- Lead time to Peoria property
-- Sensor list with roles (direct, boundary, precip, proxy)
-- Alert conditions
-
-**Example zone entry:**
-```toml
-[[zone]]
-id = 2
-name = "Upper Peoria Lake — Property Zone (Primary)"
-lead_time_hours_min = 0
-lead_time_hours_max = 6
-primary_alert_condition = "Peoria pool > 447.5 ft / Kingston Mines stage > 14 ft"
-
-[[zone.sensor]]
-site_code = "05567500-PEORIA-POOL"
-role = "direct"
-relevance = "MOST IMPORTANT SINGLE READING for property elevation"
-```
-
-### Station Registry
-
-**Data source configurations:**
-- [usgs_stations.toml](flomon_service/usgs_stations.toml) - USGS gauge stations with flood thresholds
-- [iem_asos.toml](flomon_service/iem_asos.toml) - ASOS weather stations with basin assignments
-- [usace_iem.toml](flomon_service/usace_iem.toml) - USACE CWMS locations (lock/dam pools)
-
-Legacy site-based configuration; [zones.toml](flomon_service/zones.toml) is now primary for monitoring organization.
-
-### Database Schema
-
-**Multi-schema architecture** for data source separation:
-
-```
-usgs_raw.*   -- USGS gauge readings and site metadata
-nws.*        -- NWS flood thresholds, forecasts, alerts (planned)
-noaa.*       -- Precipitation observations and forecasts (planned)
-usace.*      -- Lock/dam operations and releases (planned)
-soil.*       -- Soil moisture and saturation (planned)
-```
-
-**Applied migrations:**
-- `001_initial_schema.sql` - USGS gauge readings and site metadata
-- `002_monitoring_metadata.sql` - Staleness tracking and health monitoring
-- `003_flood_metadata.sql` - NWS flood thresholds and historical events
-- `004_usace_cwms.sql` - CWMS locations, timeseries, backwater event detection
-- `005_flood_analysis.sql` - Flood analysis tables and zone views
-- `006_iem_asos.sql` - ASOS weather observations and precipitation summaries
-
-**Key tables:**
-- `usgs_raw.gauge_readings` - Time-series discharge and stage (87 years × 15min resolution)
-- `nws.flood_events` - Historical floods with crest times and peak stages (118 events)
-- `usace.cwms_timeseries` - Mississippi/Illinois lock data for backwater detection
-- `usace.backwater_events` - Detected backwater floods with severity classification
-- `asos_observations` - Weather station observations (temperature, precipitation, wind, pressure)
-- `asos_precip_summary` - Precipitation aggregations for flood risk thresholds
-- `flood_analysis.zone_snapshots` - Zone status at historical flood crests
-
-See [flomon_service/docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXTENSIBILITY.md) for schema design patterns.
 
 ## Documentation
-
-### Quick Start Guides
 
 - **[floml/README.md](floml/README.md)** - Python analysis package (regression, correlation, ML)
 - **[floml/scripts/README.md](floml/scripts/README.md)** - Visualization tools and live monitoring
 - **[floml/QUICKSTART.md](floml/QUICKSTART.md)** - Get started with analysis
-
-### Technical Documentation
 
 - **[flomon_service/docs/README.md](flomon_service/docs/README.md)** - Full docs index for Rust daemon
   - Database setup and configuration
@@ -381,15 +210,9 @@ See [flomon_service/docs/SCHEMA_EXTENSIBILITY.md](flomon_service/docs/SCHEMA_EXT
 
 ### Project Wiki
 
-Technical notes and design decisions: [illinois_river_flood_warning.wiki/](illinois_river_flood_warning.wiki/)
+Technical notes and design decisions: [riverviews.wiki/](riverviews.wiki/)
 
 ### Testing
-
-**Run all tests:**
-```bash
-cd flomon_service
-cargo test
-```
 
 **Integration test suites:**
 - `tests/asos_integration.rs` - ASOS weather station data collection and storage (16 tests)
@@ -407,5 +230,5 @@ cargo test
 
 ## Disclaimer
 
-This is a personal flood monitoring project for portfolio demonstration. **For official flood warnings and emergency information, always consult the National Weather Service and local emergency management authorities.**
+This is a persona project for education and experimentation, not yet a reliable technology. **For official flood warnings and emergency information, always consult the National Weather Service and local emergency management authorities.**
 

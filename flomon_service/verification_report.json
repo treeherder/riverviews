@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-22T03:15:05.238401483+00:00",
+  "timestamp": "2026-03-02T07:17:38.328395266+00:00",
   "usgs_results": [
     {
       "site_code": "05568500",
@@ -87,7 +87,7 @@
         "00065"
       ],
       "parameters_missing": [],
-      "sample_data_count": 20,
+      "sample_data_count": 28,
       "peak_flow_available": true,
       "error_message": null
     },
@@ -130,7 +130,7 @@
     {
       "site_code": "05536890",
       "name": "Chicago Sanitary & Ship Canal at Romeoville, IL",
-      "status": "Failed",
+      "status": "Success",
       "site_exists": true,
       "parameters_available": [
         "00060",
@@ -141,7 +141,7 @@
         "00065"
       ],
       "parameters_missing": [],
-      "sample_data_count": 0,
+      "sample_data_count": 413,
       "peak_flow_available": true,
       "error_message": null
     }
@@ -326,7 +326,7 @@
       "name": "Central Illinois Regional Airport (Bloomington-Normal)",
       "status": "Success",
       "api_responsive": true,
-      "sample_data_count": 50,
+      "sample_data_count": 53,
       "data_types_available": [
         "temperature",
         "precipitation",
@@ -340,7 +340,7 @@
       "name": "Abraham Lincoln Capital Airport (Springfield)",
       "status": "Success",
       "api_responsive": true,
-      "sample_data_count": 47,
+      "sample_data_count": 55,
       "data_types_available": [
         "temperature",
         "precipitation",
@@ -367,7 +367,7 @@
       "name": "Chicago O'Hare International Airport",
       "status": "Success",
       "api_responsive": true,
-      "sample_data_count": 60,
+      "sample_data_count": 50,
       "data_types_available": [
         "temperature",
         "precipitation",
@@ -381,7 +381,7 @@
       "name": "Chicago Executive Airport (Wheeling)",
       "status": "Success",
       "api_responsive": true,
-      "sample_data_count": 52,
+      "sample_data_count": 50,
       "data_types_available": [
         "temperature",
         "precipitation",
@@ -393,8 +393,8 @@
   ],
   "summary": {
     "usgs_total": 8,
-    "usgs_working": 5,
-    "usgs_failed": 3,
+    "usgs_working": 6,
+    "usgs_failed": 2,
     "cwms_total": 10,
     "cwms_working": 1,
     "cwms_failed": 9,

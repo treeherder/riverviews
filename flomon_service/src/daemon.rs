@@ -99,7 +99,7 @@ impl Daemon {
         let mut locations = usace_locations::load_locations()?;
         
         if locations.is_empty() {
-            eprintln!("Warning: No USACE/CWMS locations configured in usace_iem.toml");
+            eprintln!("Warning: No USACE/CWMS locations configured in usace_stations.toml");
         } else {
             // Discover actual CWMS timeseries IDs from catalog endpoint
             println!("🔍 Discovering CWMS timeseries IDs from catalog...");

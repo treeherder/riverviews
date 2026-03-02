@@ -8,7 +8,7 @@
 /// +-- config      - station registry configuration loader (usgs_stations.toml)
 /// +-- stations    - USGS site code registry with NWS flood stage thresholds
 /// +-- zones       - Hydrological zone-based sensor grouping (zones.toml)
-/// +-- usace_locations - USACE/CWMS location registry (usace_iem.toml)
+/// +-- usace_locations - USACE/CWMS location registry (usace_stations.toml)
 /// +-- asos_locations - ASOS station registry (iem_asos.toml)
 /// +-- daemon      - main daemon loop (startup, backfill, polling, warehousing)
 /// +-- endpoint    - Zone-based HTTP API for flood monitoring
