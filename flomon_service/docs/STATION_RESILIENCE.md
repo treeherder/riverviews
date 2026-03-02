@@ -11,13 +11,6 @@ USGS gauge stations can go offline temporarily or permanently due to:
 
 Our system must remain operational when individual stations fail without requiring manual intervention.
 
-## Design Principles
-
-1. **Continue Operating**: One offline station should not crash the entire service
-2. **Graceful Degradation**: Reduce functionality rather than fail completely
-3. **Visibility**: Log warnings but don't spam errors for known-offline stations
-4. **Recovery**: Automatically resume when stations come back online
-5. **Validation**: Know which stations are expected to work before deployment
 
 ## Implementation Strategies
 

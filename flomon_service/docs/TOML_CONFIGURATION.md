@@ -2,7 +2,7 @@
 
 ## Overview
 
-The flood monitoring system now loads USACE/CWMS locations from `usace_iem.toml` instead of hardcoding them in the database. This allows you to update timeseries IDs, add new locations, and adjust monitoring priorities without touching code or SQL.
+The flood monitoring system loads USACE/CWMS location metadata from `usace_stations.toml` and discovers actual timeseries IDs at runtime via the CWMS catalog API. This allows you to add new locations, update monitoring priorities, and adjust configuration without code changes or database migrations.
 
 ## Key Features
 
@@ -10,7 +10,7 @@ The flood monitoring system now loads USACE/CWMS locations from `usace_iem.toml`
 
 The system **does not hardcode** CWMS timeseries IDs. Instead, at startup:
 
-1. Loads location metadata from `usace_iem.toml`
+1. Loads location metadata from `usace_stations.toml`
 2. Queries CWMS catalog API: `https://cwms-data.usace.army.mil/cwms-data/catalog/TIMESERIES`
 3. Discovers actual available timeseries for each location
 4. Uses discovered timeseries IDs for all subsequent polling
@@ -34,14 +34,14 @@ flood_note      = "Wicket dam operation: when wickets are laid down..."
 
 ### 3. Monitoring Priorities (Auto-Detected)
 
-The system determines polling frequency from the `relevance` text:
+The system determines polling frequency from the `relevance` text (case-insensitive):
 
 - **CRITICAL** (15-min polling): Contains "PRIMARY" or "CRITICAL"
 - **HIGH** (60-min polling): Contains "HIGH" or "UPSTREAM WARNING"  
-- **MEDIUM** (6-hour polling): Contains "EXTENDED" or "CONFLUENCE MONITOR"
-- **LOW** (daily polling): Everything else
+- **MEDIUM** (360-min / 6-hour polling): Contains "EXTENDED" or "CONFLUENCE MONITOR"
+- **LOW** (1440-min / daily polling): Everything else
 
-Change priority by editing the `relevance` field in the TOML.
+Change priority by editing keywords in the `relevance` field in the TOML file.
 
 ## Startup Sequence
 
@@ -51,21 +51,20 @@ Change priority by editing the `relevance` field in the TOML.
 
 📊 Initializing daemon...
 🔍 Discovering CWMS timeseries IDs from catalog...
-   Illinois River at Peoria Lock and Dam ... 
-      Discovered pool elevation: Peoria-Pool.Elev.Inst.~1Hour.0.CBT-RAW
-      Discovered tailwater elevation: Peoria-TW.Elev.Inst.~1Hour.0.CBT-RAW
-   ✓
-   Illinois River at LaGrange Lock and Dam ... 
-      Discovered pool elevation: LaGrange-Pool.Elev.Inst.~1Hour.0.CBT-RAW
-      Discovered tailwater elevation: LaGrange-TW.Elev.Inst.~1Hour.0.CBT-RAW
-   ✓
-   Mississippi River at Grafton, IL ... 
-      Discovered stage: Grafton.Stage.Inst.15Minutes.0.Ccp-Rev
-   ✓
+   Illinois River at Peoria Lock and Dam ... ✓
+   Illinois River at LaGrange Lock and Dam ... ✓
+   Mississippi River at Grafton, IL ... ✓
+   ...
    
    Discovered timeseries for 13/13 locations
 
 ✓ Daemon initialized
+```
+
+Each location is queried against the CWMS catalog. If discovery fails, you'll see:
+```
+   Illinois River at Havana Lock and Dam ... ✗ No timeseries found
+      Warning: Will skip polling for Illinois River at Havana Lock and Dam
 ```
 
 ## LaGrange Backwater Detection
@@ -119,7 +118,7 @@ curl "https://cwms-data.usace.army.mil/cwms-data/catalog/TIMESERIES?office=MVS&l
 
 ## Adding a New Location
 
-1. Add to `usace_iem.toml`:
+1. Add to `usace_stations.toml`:
 ```toml
 [[usace_stations]]
 shef_id         = "IL09"
@@ -157,10 +156,12 @@ The system continues operating with other locations. Fix by:
 
 The `data_types` field tells the discovery system what to look for:
 
-- `"pool_elevation"` → Searches for `*-Pool.Elev.*`
-- `"tailwater_elevation"` → Searches for `*-TW.Elev.*` or `*-Tailwater.Elev.*`
+- `"pool_elevation"` → Searches for `*-Pool.Elev.*` (prioritizing `.Inst` instantaneous readings)
+- `"tailwater_elevation"` → Searches for `*-TW.Elev.*`, `*-Tailwater.Elev.*`, or `TW-*.Elev.*`
 - `"stage"` → Searches for `*.Stage.*` (for river gauges, not pools)
-- `"discharge"` → Searches for `*.Flow.*` or `*.Discharge.*`
+- `"discharge"` → (not yet implemented)
+- `"lockage"` → (not yet implemented - metadata only)
+- `"met"` → (not yet implemented - meteorological data)
 
 ## SHEF ID Notes
 
@@ -174,13 +175,13 @@ The catalog discovery handles these variations automatically.
 
 ## Extensibility
 
-The same pattern applies to:
+The same TOML-based configuration pattern applies to other data sources:
 
-- **IEM ASOS stations** (already in TOML, code TODO)
-- **NWS forecast points** (add `[[nws_stations]]` section)
-- **USGS gauge supplements** (additional metadata beyond usgs_stations.toml)
+- **IEM ASOS stations** (`iem_asos.toml`) - Implemented for precipitation monitoring
+- **USGS gauges** (`usgs_stations.toml`) - Station registry for USGS real-time data
+- **NWS forecast points** - Not yet implemented
 
-All follow: **TOML → Runtime Discovery → Polling**
+All follow the pattern: **TOML Configuration → Runtime Discovery/Registration → Polling**
 
 ## Troubleshooting
 
@@ -222,12 +223,4 @@ Location might not have pool elevation timeseries (e.g., river gauges use "stage
 - `src/ingest/cwms.rs` - Catalog queries and backwater detection
 - `src/daemon.rs` - Polling and backfill using discovered IDs
 - `src/main.rs` - Startup discovery sequence
-- `usace_iem.toml` - Configuration (user-editable)
-
-## Next Steps
-
-1. Verify discovered timeseries work (check first poll results)
-2. Add remaining Illinois Waterway locks (IL03-IL06)
-3. Add Mississippi River gauges (Alton, Hannibal)
-4. Implement LaGrange backwater detection alerts
-5. Add IEM ASOS precipitation monitoring
+- `usace_stations.toml` - Configuration (user-editable)

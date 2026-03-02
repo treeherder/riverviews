@@ -6,7 +6,7 @@
 ///
 /// ## Configuration File
 /// 
-/// Location metadata is loaded from `usace_iem.toml`, allowing updates to timeseries
+/// Location metadata is loaded from `usace_stations.toml`, allowing updates to timeseries
 /// IDs, relevance notes, and monitoring priorities without recompilation.
 
 use serde::Deserialize;
@@ -17,13 +17,11 @@ use std::fs;
 // TOML Configuration Structures
 // ---------------------------------------------------------------------------
 
-/// Root configuration from usace_iem.toml
+/// Root configuration from usace_stations.toml
 #[derive(Debug, Deserialize)]
 struct UsaceConfig {
     #[serde(default)]
     usace_stations: Vec<UsaceStationConfig>,
-    #[serde(default)]
-    iem_asos_stations: Vec<IemAsosConfig>,
 }
 
 /// USACE station configuration from TOML
@@ -41,17 +39,6 @@ struct UsaceStationConfig {
     data_types: Vec<String>,
     relevance: String,
     flood_note: Option<String>,
-}
-
-/// IEM ASOS station configuration from TOML (for future use)
-#[derive(Debug, Deserialize)]
-struct IemAsosConfig {
-    station_id: String,
-    name: String,
-    latitude: f64,
-    longitude: f64,
-    data_types: Vec<String>,
-    relevance: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +110,7 @@ pub enum MonitoringPriority {
 
 /// Load all USACE locations from configuration file
 pub fn load_locations() -> Result<Vec<UsaceLocation>, String> {
-    let config_path = "usace_iem.toml";
+    let config_path = "usace_stations.toml";
     
     let content = fs::read_to_string(config_path)
         .map_err(|e| format!("Failed to read {}: {}", config_path, e))?;

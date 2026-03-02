@@ -1,4 +1,8 @@
-# USACE & IEM Station Reference — Peoria / Upper Peoria Lake Flood Monitor
+# USACE CWMS Location Configuration — Peoria / Upper Peoria Lake Flood Monitor
+#
+# This file contains USACE Corps Water Management System (CWMS) lock and dam
+# locations for flood monitoring. Locations are loaded at startup and timeseries
+# IDs are discovered via the CWMS catalog API.
 #
 # DATUM NOTES:
 #   - Illinois Waterway pool elevations use NGVD29 (National Geodetic Vertical Datum 1929)
@@ -121,6 +125,7 @@ flood_note = "Cross-reference with USGS 05587450 (Illinois River at Grafton) for
 
 [[usace_stations]]
 name            = "Mississippi River at Alton, IL"
+cwms_location   = "Alton-IL"
 shef_id         = "ALTI2"
 office          = "MVS"
 data_types      = ["stage", "discharge"]
@@ -128,6 +133,7 @@ relevance = "UPSTREAM MISSISSIPPI REFERENCE — Alton is upstream of Grafton and
 
 [[usace_stations]]
 name            = "Mississippi River at Hannibal, MO"
+cwms_location   = "Hannibal-MO"
 shef_id         = "HNLM7"
 office          = "MVS"
 data_types      = ["stage", "discharge"]
@@ -173,87 +179,3 @@ relevance = "EXTENDED BACKWATER LEAD TIME — Hannibal is ~120 miles upstream of
 # "CBT-RAW" vs "lrgs-rev") vary by office and data stream. Use the catalog
 # query to enumerate what's actually available for each location before
 # hardcoding timeseries IDs in your service.
-
-
-# =============================================================================
-# SECTION 5: IEM (IOWA ENVIRONMENTAL MESONET) — RELEVANT STATIONS & ENDPOINTS
-# =============================================================================
-
-[[iem_asos_stations]]
-station_id  = "KPIA"
-name        = "Peoria International Airport"
-latitude    = 40.664
-longitude   = -89.693
-data_types  = ["precipitation", "temperature", "wind", "pressure", "humidity"]
-relevance = "PRIMARY LOCAL PRECIP — closest ASOS station to Upper Peoria Lake. Use for current conditions and local rainfall accumulation. 1-minute interval data available from 2000 onward."
-
-[[iem_asos_stations]]
-station_id  = "KBMI"
-name        = "Central Illinois Regional Airport (Bloomington-Normal)"
-latitude    = 40.477
-longitude   = -88.916
-data_types  = ["precipitation", "temperature"]
-relevance = "MACKINAW RIVER BASIN PRECIP — Bloomington sits in the upper Mackinaw River watershed. Rainfall here is a leading indicator of Mackinaw River rise, which feeds directly into the Illinois near Pekin."
-
-[[iem_asos_stations]]
-station_id  = "KSPI"
-name        = "Abraham Lincoln Capital Airport (Springfield)"
-latitude    = 39.844
-longitude   = -89.678
-data_types  = ["precipitation", "temperature"]
-relevance = "SOUTHERN BASIN REFERENCE — useful for tracking storm systems moving northeast across the basin. Heavy Springfield rainfall often precedes Sangamon River rises."
-
-[[iem_asos_stations]]
-station_id  = "KGBG"
-name        = "Galesburg Airport"
-latitude    = 40.938
-longitude   = -90.431
-data_types  = ["precipitation", "temperature"]
-relevance = "SPOON RIVER BASIN PRECIP — Galesburg is in the upper Spoon River watershed. Useful for monitoring contribution from that tributary."
-
-[[iem_asos_stations]]
-station_id  = "KORD"
-name        = "Chicago O'Hare International Airport"
-latitude    = 41.980
-longitude   = -87.904
-data_types  = ["precipitation", "temperature"]
-relevance = "CHICAGO METRO PRECIP — heavy rainfall at O'Hare drives MWRD releases through the CAWS, which appear at Lockport and Brandon Road 6–12 hours later. A useful early proxy for Chicago-origin flow increases."
-
-[[iem_asos_stations]]
-station_id  = "KPWK"
-name        = "Chicago Executive Airport (Wheeling)"
-latitude    = 42.114
-longitude   = -87.901
-data_types  = ["precipitation"]
-relevance = "SECONDARY CHICAGO METRO PRECIP — northwest suburbs, feeds the Des Plaines River drainage."
-
-
-# IEM GRIDDED DATA (IEMRE) — point queries for any lat/lon in the basin
-[iem_iemre]
-description = "Gridded reanalysis — query any lat/lon for daily or hourly precip, temperature, and derived variables. Best source for continuous historical precip record at your specific property location."
-endpoint_daily   = "https://mesonet.agron.iastate.edu/iemre/daily/{YYYY-MM-DD}/{LAT}/{LON}/json"
-endpoint_hourly  = "https://mesonet.agron.iastate.edu/iemre/hourly/{YYYY-MM-DD}/{LAT}/{LON}/json"
-endpoint_multiday = "https://mesonet.agron.iastate.edu/iemre/multiday/{date1}/{date2}/{LAT}/{LON}/json"
-property_coords  = { lat = 40.720, lon = -89.640 }  # approximate — update with exact coords
-record_start     = "1893-01-01"
-update_frequency = "~10 minutes after each hour (real-time)"
-variables        = ["high_tmpf", "low_tmpf", "precip", "snow", "snowd", "avg_sknt"]
-
-[iem_mrms]
-description = "Multi-Radar Multi-Sensor (MRMS) quantitative precipitation estimates served as WMS layers and downloadable rasters. Use for basin-wide rainfall visualization on your dashboard."
-wms_endpoint = "https://mesonet.agron.iastate.edu/cgi-bin/wms/us/mrms.cgi"
-layers       = [
-    "mrms_p1h",   # 1-hour QPE accumulation
-    "mrms_p24h",  # 24-hour QPE
-    "mrms_p48h",  # 48-hour QPE
-    "mrms_p72h",  # 72-hour QPE — best for multi-day saturation events
-]
-raster_download = "https://mesonet.agron.iastate.edu/rainfall/mrms2img.py?year=YYYY&month=MM&day=DD&hour=HH&period=24"
-
-[iem_nws_archive]
-description = "Archive of all NWS text products including River Statements (RVS), Flood Watches/Warnings (FFA/FFW), and Hydrologic Outlooks (ESF) from NWS Peoria (office: ILX). Use for historical event context and damage narrative in your flood event database."
-endpoint     = "https://mesonet.agron.iastate.edu/api/1/nwstext_search.json?pil=RVS&cccc=KILX"
-office       = "KILX"  # NWS Peoria
-useful_pils  = ["RVS", "FFA", "FFW", "ESF", "HYD", "LSR"]
-
-

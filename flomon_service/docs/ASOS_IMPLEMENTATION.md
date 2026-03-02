@@ -227,15 +227,6 @@ Restart daemon to load new station.
 daemon.backfill_asos_station("KPIA", 30)?;  // Last 30 days
 ```
 
-## Flood Forecasting Workflow
-
-1. **Precipitation Detection**: ASOS stations detect significant rainfall
-2. **Basin Aggregation**: Calculate 6hr, 12hr, 24hr totals per basin
-3. **Threshold Comparison**: Check against basin-specific watch/warning levels
-4. **Lag Time Application**: Add basin lag hours to precipitation timestamp
-5. **Gauge Monitoring**: Monitor upstream USGS gauge at predicted peak time
-6. **Alert Generation**: Issue watch/warning if both precip and gauge trends confirm
-
 ### Example: Mackinaw River Flood
 
 ```
@@ -245,41 +236,6 @@ daemon.backfill_asos_station("KPIA", 30)?;  // Last 30 days
 4. If stage rises to Action/Minor/Moderate, issue corresponding alert
 ```
 
-## Implementation Status
-
-✅ **Complete:**
-- IEM API client (`src/ingest/iem.rs`)
-- ASOS location loader (`src/asos_locations.rs`)
-- Database schema (`sql/006_iem_asos.sql`)
-- Daemon integration (polling, warehousing)
-- Basin-specific thresholds
-- Lag time calculations
-
-⏳ **Future Enhancements:**
-- Automated precipitation summary computation (scheduled job)
-- Alert generation based on threshold exceedances
-- Backwater correlation (ASOS precip + LaGrange hydraulic control loss)
-- IEMRE gridded precipitation integration
-- MRMS radar-based QPE verification
-- API endpoint for current flood risk status
-
-## Testing
-
-```bash
-# Build with full warnings
-cargo build --release
-
-# Run daemon with ASOS monitoring
-./target/release/flomon_service
-
-# Check for ASOS startup messages:
-# 📡 Loaded 6 ASOS stations for precipitation monitoring
-#    KPIA (Peoria) - Illinois River basin - Priority: Critical
-#    ...
-
-# Monitor logs for poll results:
-# ✓ Poll complete: 342 new readings (8 USGS, 13 CWMS, 6 ASOS)
-```
 
 ## References
 
@@ -288,25 +244,6 @@ cargo build --release
 - **Basin Thresholds**: Empirically derived from historical flood events + NWS guidelines
 - **Lag Times**: Based on USGS StreamStats and historical hydrograph analysis
 
-## Maintenance
-
-### Monthly Tasks
-- Review `asos_precip_summary` for flood events
-- Validate threshold accuracy against actual flood occurrences
-- Adjust poll intervals if needed
-
-### Quarterly Tasks
-- Run `cleanup_asos_observations()` to purge old 1-minute data
-- Archive summaries to cold storage
-- Review new ASOS station additions
-
-### Annual Tasks
-- Recalibrate basin thresholds based on previous year's events
-- Update lag times if basin characteristics change
-- Review upstream gauge associations
-
----
 
 **Last Updated**: 2026-02-21  
-**Implementation Version**: 1.0  
-**Contact**: Flood Monitoring Service Team
+**Implementation Version**: 0.1 
