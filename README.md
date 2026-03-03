@@ -1,8 +1,8 @@
 # Riverviews - Flood Monitoring Service
 
-Real-time flood monitoring system using zone-based hydrological modeling to track river conditions across multiple data sources. Combines Rust for reliable data curation with Python for statistical analysis and regression testing.
+Riverviews should be a generalized flood monitoring system designed to work with any river or waterway. Right now, the system has two major elements: mainly, there is a daemon that is intended to run full-time as an online service.  This daemon, flomon_service, is responsible for maintaining an injestion pipeline from the various data sources and then storing, validating and curating this data - with the goal of checking that it is current and accurate, and that it is as complete and well-labled as possible. flomon_service also provides two endpoints: a data stream for live data, and a simple alerting script based on real-time monitored rate-of-change against predetermined thresholds. To support the flomon_service daemon, the riverviews package also provides analysis executables through the FloML directory. These scripts are designed to leverage the data provided by flomon_service: performing complex analysis, displaying information, and eventually dynamically re-configuring the toleances of thresholds - or providing additional constraints to those already set by default in flomon_service. 
 
-**Status:** Zone-based architecture implemented | Historical data ingestion complete | Analysis infrastructure operational
+
 
 ## Table of Contents
 
@@ -15,9 +15,6 @@ Real-time flood monitoring system using zone-based hydrological modeling to trac
 - [Configuration](#configuration)
 - [Documentation](#documentation)
 
-## Vision
-
-Riverviews is a generalized flood monitoring system designed to work with any river or waterway. Right now, the system has two major elements: firstly, there is a daemon service that is intended to run full-time as an online service.  flomon_service  is responsible for injesting data from the various data sources and storing it in postgres, validating and curating - checking that it is current, and ensuring that the data in general is as complete and well-labled as possible. flomon_service also provides an endpoint data stream for live data, and a simple alerting script based on rate-of-change and predetermined thresholds.  FloML is a package that holds mainly python-based scripts for analysis of the data provided by flomon_service, interacting with the endpoint and, eventually dynamically configuring the thresholds set in flomon_service. FloML additionally provides a dashboard view for use in human-monitoring live conditions and eventually querying views on past events.
 
 
 ## Project Structure
@@ -26,194 +23,314 @@ Riverviews is a generalized flood monitoring system designed to work with any ri
 riverviews/
 ├── flomon_service/               # Rust monitoring daemon
 │   ├── src/
-│   │   ├── bin/
-│   │   │   ├── historical_ingest.rs      # USGS historical backfill
-│   │   │   ├── ingest_cwms_historical.rs # CWMS historical backfill
-│   │   │   ├── ingest_peak_flows.rs      # NWS peak flow ingestion
-│   │   │   ├── analyze_flood_events.rs   # Event analysis (deprecated)
-│   │   │   └── detect_backwater.rs       # Backwater detection
-│   │   ├── alert/                # Threshold and staleness monitoring
-│   │   ├── analysis/             # Zone-based groupings
-│   │   ├── ingest/               # Multi-source API clients
-│   │   ├── model.rs              # Core data structures
-│   │   ├── stations.rs           # Station and zone registry
-│   │   ├── lib.rs                # Shared library
-│   │   └── main.rs               # HTTP API server
-│   ├── scripts/
+│   │   ├── main.rs              # HTTP API server entry point
+│   │   ├── daemon.rs            # Core daemon loop and polling logic
+│   │   ├── endpoint.rs          # Zone-based HTTP API endpoints
+│   │   ├── db.rs                # Database connectivity
+│   │   ├── stations.rs          # USGS station registry loader
+│   │   ├── usace_locations.rs   # USACE/CWMS location registry
+│   │   ├── asos_locations.rs    # ASOS weather station registry
+│   │   ├── zones.rs             # Zone configuration loader
+│   │   ├── model.rs             # Core data structures
+│   │   ├── logging.rs           # Structured logging system
+│   │   ├── verify.rs            # Data source verification
+│   │   ├── alert/               # Threshold and staleness monitoring
+│   │   ├── analysis/            # Zone-based groupings
+│   │   ├── ingest/              # Multi-source API clients (usgs, cwms, iem)
+│   │   └── monitor/             # Monitoring utilities
+│   ├── tests/                   # Integration test suites
+│   │   ├── asos_integration.rs        # ASOS weather data tests
+│   │   ├── daemon_lifecycle.rs        # Daemon behavior tests
+│   │   ├── data_source_verification.rs # API verification tests
+│   │   └── peak_flow_integration.rs   # Peak flow analysis tests
+│   ├── scripts/                 # Python utility scripts
 │   │   ├── generate_flood_zone_snapshots.py  # Zone regression testing
-│   │   └── README.md             # Scripts documentation
-│   ├── docs/                     # Architecture documentation
-│   ├── sql/                      # Database migrations (001-006)
-│   ├── zones.toml                # Zone definitions
-│   └── Cargo.toml
-├── floml/                        # Python analysis package
-│   ├── floml/                    # Core library (regression, correlation, db)
-│   ├── scripts/                  # Visualization and analysis tools
-│   │   ├── zone_dashboard.py    # Live monitoring dashboard
-│   │   ├── visualize_zones.py   # Zone detail viewer
-│   │   ├── demo_correlation.py  # Correlation analysis
-│   │   └── README.md            # Tool documentation
-└── riverviews.wiki/  # Technical documentation
+│   │   ├── analyze_historical_data.py        # Historical data analysis
+│   │   ├── check_db_status.py                # Database status checker
+│   │   ├── test_usgs_services.py             # USGS API testing
+│   │   └── README.md                         # Scripts documentation
+│   ├── docs/                    # Architecture documentation
+│   │   ├── ASOS_IMPLEMENTATION.md            # Weather station integration
+│   │   ├── CWMS_INTEGRATION_SUMMARY.md       # USACE CWMS status
+│   │   ├── DATA_SOURCE_ORGANIZATION.md       # Configuration patterns
+│   │   ├── DATA_SOURCE_VERIFICATION.md       # Testing framework
+│   │   ├── LOGGING_AND_ERROR_HANDLING.md     # Logging system
+│   │   ├── STATION_RESILIENCE.md             # Failure handling
+│   │   └── TOML_CONFIGURATION.md             # Configuration guide
+│   ├── sql/                     # Database schema migrations
+│   │   ├── 001_initial_schema.sql       # Core monitoring tables
+│   │   ├── 002_monitoring_metadata.sql  # Station metadata
+│   │   ├── 003_flood_metadata.sql       # Flood thresholds
+│   │   ├── 004_usace_cwms.sql           # USACE data schema
+│   │   ├── 005_flood_analysis.sql       # Analysis tables
+│   │   └── 006_iem_asos.sql             # Weather station schema
+│   ├── usgs_stations.toml       # USGS gauge configuration
+│   ├── usace_stations.toml      # USACE lock/dam configuration
+│   ├── iem_asos.toml            # ASOS weather station configuration
+│   ├── zones.toml               # Zone definitions
+│   └── Cargo.toml               # Rust dependencies
+├── floml/                       # Python analysis package
+│   ├── floml/                   # Core library modules
+│   │   ├── __init__.py
+│   │   ├── db.py               # Database connection utilities
+│   │   ├── regression.py       # Segmented linear regression
+│   │   ├── correlation.py      # Multi-station correlation
+│   │   └── precursors.py       # Flood precursor detection
+│   ├── scripts/                 # Analysis and visualization tools
+│   │   ├── zone_dashboard.py   # Live ncurses monitoring dashboard
+│   │   ├── visualize_zones.py  # Terminal zone visualization
+│   │   ├── demo_correlation.py # Sensor correlation analysis
+│   │   └── analyze_events.py   # Historical event analysis
+│   ├── examples/                # Example usage scripts
+│   │   └── query_endpoint.py   # Endpoint querying examples
+│   ├── tests/                   # Python unit tests
+│   ├── QUICKSTART.md            # Quick reference guide
+│   └── requirements.txt         # Python dependencies
+├── riverviews.wiki/             # Technical documentation wiki
+│   ├── Home.md                  # Wiki home page
+│   ├── Data-Sources.md          # Data source documentation
+│   ├── Database-Architecture.md # Database design
+│   ├── Peak-Flow-Analysis.md    # Peak flow methodology
+│   └── Staleness-Tracking.md    # Data staleness monitoring
+├── TODO.md                      # Future enhancements tracker
+└── README.md                    # This file
 ```
 
 ## Data Sources
 
-The system integrates multiple data sources for comprehensive flood monitoring. All operational sources have automated verification testing ([DATA_SOURCE_VERIFICATION.md](flomon_service/docs/DATA_SOURCE_VERIFICATION.md)).
+The Riverviews system is designed to integrate multiple types of hydrological and meteorological data sources through a flexible, configuration-driven architecture. Data sources are classified by type and managed through TOML configuration files, allowing adaptation to various differerent US-monitored waterways without code changes.
 
-### 1. USGS Stream Gauges (Primary Hydrological Data)
+### Data Source Classification System
 
-**Source:** U.S. Geological Survey National Water Information System (NWIS)  
-**API Endpoint:** `https://waterservices.usgs.gov/nwis/`
+**Source Types:**
+- **Primary Hydrological** - Stream gauges providing discharge and stage measurements
+- **Reference Data** - Historical flood records and official thresholds
+- **Meteorological** - Weather stations for precipitation and atmospheric conditions
+- **Infrastructure** - Lock, dam, and reservoir operations
+- **Forecast** - Predicted conditions (precipitation, discharge, stage)
 
-**Data Types:**
+**Configuration Pattern:**
+Each data source type has a dedicated TOML configuration file defining:
+- Station/location metadata (coordinates, identifiers, names)
+- Monitoring priority levels (CRITICAL, HIGH, MEDIUM, LOW)
+- Expected data parameters and update frequencies
+- Basin associations and hydrological relationships
+- Polling intervals and staleness thresholds
 
-| API Type | Coverage | Resolution | Parameters | Use Case |
-|----------|----------|------------|------------|----------|
-| **Instantaneous Values (IV)** | Last 120 days | 15 minutes | 00060 (discharge), 00065 (stage) | Real-time monitoring, flood event tracking |
-| **Daily Values (DV)** | 1939-present | Daily means | Same as IV | Historical analysis, long-term trends, model training |
-| **Peak Flow Records** | 1941-2025 | Annual peaks | Stage and discharge | Flood frequency analysis, threshold validation |
+### 1. Stream Gauge Networks (Primary Hydrological Data)
 
-**Configuration:** 8 stations spanning the Illinois River basin (Kingston Mines, Peoria pool, Chillicothe, Henry, Marseilles) and key tributaries (Mackinaw, Spoon, Des Plaines)
+**Capability:** Integration with any stream gauge network providing standardized APIs for water level and flow measurements.
 
-**Operational Status:** ✅ 5 of 8 stations operational (62.5%)
-- Working: Kingston Mines (05568500), Peoria pool (05567500), Chillicothe (05568000), Marseilles (05552500), Spoon River (05570000)
-- Offline: Henry (05557000), Mackinaw River (05568580), Chicago Sanitary Canal (05536890) - USGS equipment issues
+**Supported Networks:**
+- **USGS NWIS** (U.S. Geological Survey National Water Information System)
+- Any network providing similar REST APIs with discharge and stage parameters
 
-**Implementation Status:**
-- ✅ API clients for IV, DV, and peak flow data
-- ✅ PostgreSQL schema `usgs_raw` with 87 years of historical data loaded
-- ✅ Station metadata with NWS flood thresholds (action/minor/moderate/major stages)
-- ✅ Resilience framework for graceful degradation when stations fail
-- ✅ Integration tests with live API verification
+**Data Types Available:**
+- **Real-time observations:** High-frequency measurements (typically 5-30 minute intervals)
+- **Historical daily values:** Long-term records for trend analysis and model training
+- **Peak flow records:** Annual maximum events for flood frequency analysis
+- **Parameter types:** Discharge (flow rate), stage (water level), velocity, temperature
 
-**Documentation:** [STATION_RESILIENCE.md](flomon_service/docs/STATION_RESILIENCE.md), [TOML_CONFIGURATION.md](flomon_service/docs/TOML_CONFIGURATION.md)
+**System Features:**
+- **Automatic station discovery:** Query available parameters for any site code
+- **Resilience framework:** Graceful degradation when individual stations fail
+- **Parameter validation:** Expected vs. actual parameter verification
+- **Gap detection:** Identify and backfill missing data periods
+- **Threshold management:** Configure flood stage levels per station
 
----
+**Configuration:** Stations defined in `usgs_stations.toml` with metadata including:
+- Site codes and official names
+- Geographic coordinates
+- Expected parameters (discharge, stage, etc.)
+- Flood thresholds (action, minor, moderate, major)
+- Upstream/downstream relationships
+- Travel times between locations
 
-### 2. NWS Peak Flow Events (Reference Data)
-
-**Source:** National Weather Service Advanced Hydrologic Prediction Service (AHPS)  
-**Coverage:** USGS peak flow database + NWS AHPS flood history
-
-**Data Types:**
-- Historical flood events with crest times and peak stages
-- Official flood stage thresholds (action/minor/moderate/major) by site
-- Annual peak flow records with discharge measurements
-- Flood frequency statistics
-
-**Use Case:** Historical flood analysis, regression model training, threshold validation, event detection algorithm testing
-
-**Status:** ✅ Fully implemented
-- 118 historical floods ingested (1993-2026) for Illinois River basin
-- Database-driven threshold system (replaces hardcoded values)
-- Integration with USGS data for stage-discharge relationship modeling
-- 8 integration tests for peak flow processing
-
-**Schema:** `nws.flood_events`, `nws.flood_thresholds` (see [sql/005_flood_analysis.sql](flomon_service/sql/005_flood_analysis.sql))
+**Documentation:** See [STATION_RESILIENCE.md](flomon_service/docs/STATION_RESILIENCE.md) for handling station failures and [TOML_CONFIGURATION.md](flomon_service/docs/TOML_CONFIGURATION.md) for configuration patterns.
 
 ---
 
-### 3. ASOS Weather Stations (Precipitation Monitoring)
+### 2. Historical Flood Records (Reference Data)
 
-**Source:** Iowa Environmental Mesonet (IEM) ASOS/AWOS network  
-**API Endpoints:** 
-- Current observations: `https://mesonet.agron.iastate.edu/json/current.py`
-- High-resolution precipitation: `https://mesonet.agron.iastate.edu/cgi-bin/request/asos1min.py`
+**Capability:** Ingest official flood events and threshold definitions from government sources for validation and model training.
 
-**Data Types:**
-- **Precipitation:** 1-minute interval rainfall accumulation (2000-present) and 1-hour accumulations
-- **Temperature & Humidity:** Air temperature, dewpoint, relative humidity
-- **Wind:** Speed (knots), direction (degrees), gusts
-- **Atmospheric:** Pressure (mb), visibility (miles)
-- **Conditions:** Sky condition codes, present weather phenomena
+**Supported Sources:**
+- **NWS AHPS** (National Weather Service Advanced Hydrologic Prediction Service)
+- **USGS Peak Flow Database** - Annual maximum streamflow records
+- Any source providing flood crest times, peak stages, and official thresholds
 
-**Configured Stations (6):**
+**Data Types Available:**
+- Historical flood events with crest timestamps and peak measurements
+- Official flood stage thresholds by severity level (action/minor/moderate/major)
+- Flood frequency statistics and return period analysis
+- Comparison data for validating real-time flood detection algorithms
 
-| Station | Location | Basin | Priority | Role |
-|---------|----------|-------|----------|------|
-| **KPIA** | Peoria | Illinois River | CRITICAL | Primary local precipitation (15-min polling) |
-| **KBMI** | Bloomington | Mackinaw River | HIGH | Tributary basin monitoring (60-min) |
-| **KSPI** | Springfield | Sangamon River | HIGH | Southern basin reference (60-min) |
-| **KGBG** | Galesburg | Spoon River | HIGH | Western tributary basin (60-min) |
-| **KORD** | Chicago O'Hare | Des Plaines River | MEDIUM | Northern basin context (6-hr) |
-| **KPWK** | Wheeling | Des Plaines tributary | MEDIUM | Extended coverage (6-hr) |
+**System Features:**
+- **Event classification:** Categorize floods by magnitude and duration
+- **Threshold database:** Store official definitions for automated alerting
+- **Model validation:** Compare predictions against historical events
+- **Regression testing:** Verify algorithm accuracy across documented floods
 
-**Basin Precipitation Thresholds:** Configured for 6 and 24-hour accumulations at watch and warning levels (see [ASOS_IMPLEMENTATION.md](flomon_service/docs/ASOS_IMPLEMENTATION.md#basin-precipitation-thresholds))
-
-**Use Case:** Precipitation is the primary driver of tributary flooding. Monitor basin-wide rainfall for flood forecasting with lag times of 6-48 hours depending on basin size and characteristics.
-
-**Status:** ✅ Fully operational (100% station availability)
-- API client with 1-minute and hourly data fetching
-- Schema deployed: `asos_stations`, `asos_observations`, `asos_precip_summary` ([sql/006_iem_asos.sql](flomon_service/sql/006_iem_asos.sql))
-- All 6 stations verified operational with complete data types
-- 16 integration tests passing
-- Automatic precipitation accumulation and threshold detection
-
-**Documentation:** [ASOS_IMPLEMENTATION.md](flomon_service/docs/ASOS_IMPLEMENTATION.md)
+**Use Cases:**
+- Training stage-discharge relationship models
+- Validating flood detection algorithms
+- Setting baseline thresholds for automated alerts
+- Historical trend analysis and climate impact assessment
 
 ---
 
-### 4. USACE CWMS (Lock & Dam Data)
+### 3. Weather Station Networks (Meteorological Data)
 
-**Source:** U.S. Army Corps of Engineers Corps Water Management System  
-**API Endpoint:** `https://cwms-data.usace.army.mil/cwms-data/`
+**Capability:** Monitor precipitation and atmospheric conditions from weather observation networks to forecast tributary flooding and basin-wide rainfall.
 
-**Intended Data Types:**
-- Mississippi River stage readings (backwater source)
-- Illinois River lock/dam pool elevations and tailwater stages
-- Lock operations and gate positions
-- Flow measurements
+**Supported Networks:**
+- **ASOS/AWOS via IEM** (Automated Surface Observing System via Iowa Environmental Mesonet)
+- Any weather network providing precipitation, temperature, wind, and pressure data
 
-**Configured Locations (10):** Grafton, Alton, Hannibal (Mississippi); Peoria, LaGrange, Starved Rock, Marseilles, Dresden Island, Brandon Road, Lockport (Illinois locks)
+**Data Types Available:**
+- **Precipitation:** High-resolution rainfall accumulation (1-minute to hourly intervals)
+- **Temperature:** Air temperature, dewpoint, relative humidity
+- **Wind:** Speed, direction, gusts
+- **Atmospheric:** Barometric pressure, visibility
+- **Conditions:** Sky cover, present weather phenomena
 
-**Use Case:** Backwater flood detection - when high Mississippi River levels block Illinois River drainage, causing "bottom-up" flooding at the confluence
+**System Features:**
+- **Priority-based polling:** Configure update frequency by station importance
+- **Precipitation thresholds:** Basin-specific alert levels for watch/warning
+- **Accumulation windows:** Calculate totals over configurable time periods (6hr, 12hr, 24hr, 48hr)
+- **Basin assignment:** Link stations to upstream tributary basins
+- **Lag time modeling:** Define precipitation-to-peak relationships
 
-**Status:** ⚠️ Infrastructure implemented, limited data availability
-- ✅ Runtime catalog discovery via CWMS API
-- ✅ Database schema deployed ([sql/004_usace_cwms.sql](flomon_service/sql/004_usace_cwms.sql))
-- ✅ Historical data ingestion tools operational
-- ✅ Backwater event detection algorithms implemented
-- ❌ Illinois River lock/dam data NOT available in public CWMS API (MVR District)
-- ⚠️ Mississippi River (Grafton) catalog found but limited real-time data
-- 🔍 Alternative data source investigation ongoing: `https://rivergages.mvr.usace.army.mil/`
+**Configuration:** Stations defined in `iem_asos.toml` with:
+- Station identifiers and names
+- Priority levels (CRITICAL/HIGH/MEDIUM/LOW determine polling frequency)
+- Basin associations (which river/tributary does this precipitation affect)
+- Upstream gauge relationships (where does this precipitation flow to)
+- Precipitation thresholds by time window
 
-**Technical Note:** CWMS API catalog discovery works correctly, but most Illinois River infrastructure data is either not published publicly or uses different identifiers. Historical backfill from other sources remains functional.
+**Use Cases:**
+- Tributary flood forecasting (precipitation drives small-basin response)
+- Basin-wide saturation monitoring
+- Event attribution (was flooding caused by precipitation or backwater)
+- Early warning for fast-response watersheds (6-48 hour lead times)
 
-**Documentation:** [CWMS_INTEGRATION_SUMMARY.md](flomon_service/docs/CWMS_INTEGRATION_SUMMARY.md)
+**Documentation:** See [ASOS_IMPLEMENTATION.md](flomon_service/docs/ASOS_IMPLEMENTATION.md) for precipitation monitoring and threshold configuration.
 
 ---
 
-### 5. NOAA Precipitation Forecasts (Planned)
+### 4. Water Infrastructure Networks (Lock & Dam Operations)
 
-**Source:** NOAA National Digital Forecast Database (NDFD) + Multi-Radar Multi-Sensor (MRMS)
+**Capability:** Monitor lock, dam, and reservoir operations to detect backwater effects and manage water levels in controlled river systems.
+
+**Supported Networks:**
+- **USACE CWMS** (U.S. Army Corps of Engineers Corps Water Management System)
+- Any infrastructure network providing pool elevations, tailwater stages, and gate operations
+
+**Data Types Available:**
+- Pool elevations (upstream water levels behind dams)
+- Tailwater stages (downstream water levels below dams)
+- Lock operations and passage counts
+- Gate positions and discharge releases
+- Flow measurements at control structures
+
+**System Features:**
+- **Runtime catalog discovery:** Automatically find available timeseries from API
+- **Backwater detection:** Identify when downstream conditions block upstream drainage
+- **Hydraulic control analysis:** Determine which structure controls water levels
+- **Infrastructure status:** Monitor operational vs. design conditions
+
+**Configuration:** Locations defined in `usace_stations.toml` with:
+- CWMS location identifiers
+- District office assignments
+- Pool target elevations
+- River mile positions
+- Data types (pool/tailwater/lockage)
+
+**Use Cases:**
+- **Backwater flood detection:** When high downstream levels prevent upstream drainage
+- **Controlled release management:** Monitor planned dam operations affecting flood risk
+- **Pool level monitoring:** Track managed waterway conditions
+- **Infrastructure impact analysis:** Quantify effects of lock/dam operations on flood propagation
+
+**Technical Note:** Public API availability varies by district. System includes catalog discovery to verify data availability before attempting ingestion.
+
+**Documentation:** See [CWMS_INTEGRATION_SUMMARY.md](flomon_service/docs/CWMS_INTEGRATION_SUMMARY.md) for API integration details.
+
+---
+
+### 5. Forecast Networks (Planned)
+
+**Capability:** Integrate precipitation forecasts and discharge predictions to provide forward-looking flood risk assessment.
+
+**Planned Sources:**
+- **NOAA NDFD** (National Digital Forecast Database) - Quantitative precipitation forecasts
+- **NOAA MRMS** (Multi-Radar Multi-Sensor) - Radar-estimated rainfall
+- **NWS River Forecasts** - Official discharge and stage predictions
 
 **Planned Data Types:**
 - Quantitative Precipitation Forecasts (QPF): 1-7 day rainfall predictions
-- Radar-estimated observed rainfall (MRMS)
-- Gridded precipitation data for basin-averaged calculations
-
-**Use Case:** Forecast future discharge based on predicted precipitation in upstream basins, combined with soil moisture and current base flow
+- Gridded precipitation products for basin-averaged calculations
+- River stage and discharge forecasts
+- Flood probability predictions
 
 **Status:** 📋 Schema designed, not yet implemented
 
 ---
 
-### 6. Soil Moisture Data (Planned)
+### 6. Soil Moisture Networks (Planned)
 
-**Source:** USDA NRCS SNOTEL + NOAA Climate Prediction Center
+**Capability:** Monitor ground saturation to improve runoff coefficient estimates and rainfall-to-flood modeling accuracy.
+
+**Planned Sources:**
+- **USDA NRCS SNOTEL** - Snow and soil moisture telemetry
+- **NOAA CPC** - Climate Prediction Center soil moisture products
+- **NASA SMAP** - Soil Moisture Active Passive satellite data
 
 **Planned Data Types:**
-- Point observations from field stations (volumetric water content %)
-- Basin-averaged soil saturation index
+- Point observations from field stations (volumetric water content)
+- Basin-averaged saturation indices
 - Snow water equivalent (for spring melt scenarios)
+- Soil moisture forecasts
 
-**Use Case:** Saturated ground amplifies runoff coefficient - high soil moisture increases flood risk from precipitation. Critical for improving rainfall-runoff model accuracy.
+**Use Case:** Saturated ground increases runoff coefficient - the same rainfall produces more streamflow when soil is already wet. Critical for improving flood prediction accuracy.
 
 **Status:** 📋 Schema designed, not yet implemented
+
+---
+
+### Data Verification Framework
+
+The system includes automated verification testing for all configured data sources:
+
+- **Station availability checks:** Verify APIs respond and stations exist
+- **Parameter validation:** Confirm expected data types are available
+- **Data quality tests:** Check for reasonable values and completeness
+- **Integration test suites:** Automated testing for each source type
+
+**Verification Tools:**
+- CLI command: `flomon_service verify`
+- Integration tests: `cargo test --test data_source_verification`
+- Reports generated in JSON and Markdown formats
+
+**Documentation:** See [DATA_SOURCE_VERIFICATION.md](flomon_service/docs/DATA_SOURCE_VERIFICATION.md)
+
+---
+
+### Configuration-Driven Adaptation
+
+**Key Principle:** All data source specifics are externalized to TOML configuration files. Adapting the system to a different river basin requires editing configuration files, not modifying source code.
+
+**Configuration Files:**
+- `usgs_stations.toml` - Stream gauge stations
+- `iem_asos.toml` - Weather stations
+- `usace_stations.toml` - Lock/dam infrastructure
+- `zones.toml` - Hydrological zone groupings
 
 ---
 
 ## Reference Implementation: Illinois River Basin
+
+[Illinois-River-Implementation.md](riverviews.wiki/Illinois-River-Implementation.md)
 
 **Geographic Focus:** Peoria, Illinois and Upper Peoria Lake
 
@@ -223,19 +340,19 @@ The system integrates multiple data sources for comprehensive flood monitoring. 
 - Managed waterway with many sensors under FOIA
 - Documented flood history (1993, 2013, 2019)
 
-**Zone-Based Monitoring:**
-The system organizes sensors into 7 hydrological zones from the Mississippi River (backwater source) through the Illinois River basin to the Chicago area. Each zone has defined lead times (0-120 hours) for flood prediction at the Peoria property zone. Sensors are organized into geographic zones representing the flood propagation path:
+**Monitoring:**
+The system organizes sensors into 7 hydrological zones from the Mississippi River (backwater source) through the Illinois River basin to the Chicago area. . This example implementation combines 8 USGS gauges, 6 ASOS stations, 10 USACE locations, and configures them into 7 hydrological/geographical zones covering the Illinois River basin from the Mississippi confluence to Chicago, representing the flood propagation path.  Each zone has defined lead times (0-120 hours) for flood prediction at the central, Upper Peoria Lake interest zone:
 
 
-| Zone | Name | Lead Time | Primary Sensors | Role |
-|------|------|-----------|-----------------|------|
-| **0** | Mississippi River | 12h-5 days | Grafton, Alton, Hannibal | Backwater source detection |
-| **1** | Lower Illinois | 6-24 hours | LaGrange, Havana, Spoon River | Backwater interface |
-| **2** | Upper Peoria Lake | 0-6 hours | Peoria pool, Kingston Mines | **Property zone** (primary) |
-| **3** | Local Tributaries | 6-18 hours | Mackinaw, Spoon, KBMI | Tributary flood monitoring |
-| **4** | Mid Illinois | 18-48 hours | Henry, Starved Rock | Upstream flood propagation |
-| **5** | Upper Illinois | 36-72 hours | Dresden, Kankakee, Des Plaines | Confluence monitoring |
-| **6** | Chicago CAWS | 3-5 days | Lockport, CSSC, KORD weather | Lake Michigan drainage |
+| Zone | Name | Lead Time | Data Sources | Role |
+|------|------|-----------|--------------|------|
+| **0** | Mississippi River | 12h-5 days | **3 sensors:** 2 USACE stage (Hannibal, Alton), 1 USACE+USGS stage/discharge (Grafton) | Backwater source detection |
+| **1** | Lower Illinois | 6-24 hours | **4 sensors:** 2 USACE pool/tailwater (LaGrange L&D), 1 USGS stage/discharge (Spoon River), 1 ASOS precip (Springfield) | Backwater interface |
+| **2** | Upper Peoria Lake | 0-6 hours | **6 sensors:** 2 USACE pool/tailwater (Peoria L&D), 2 USGS stage/discharge (Peoria, Kingston Mines), 1 ASOS precip/wind/temp (PIA), 1 IEM/IEMRE gridded precip | **Property zone** (primary) |
+| **3** | Local Tributaries | 6-18 hours | **3 sensors:** 1 USGS stage/discharge (Mackinaw River), 1 ASOS precip (BMI), 1 IEM/IEMRE gridded precip (basin) | Tributary flood monitoring |
+| **4** | Mid Illinois | 18-48 hours | **4 sensors:** 1 USACE pool (Starved Rock L&D), 3 USGS stage/discharge (Marseilles, Henry, Vermilion River) | Upstream flood propagation |
+| **5** | Upper Illinois | 36-72 hours | **3 sensors:** 1 USACE pool (Dresden Island L&D), 2 USGS stage/discharge (Kankakee, Des Plaines) | Confluence monitoring |
+| **6** | Chicago CAWS | 3-5 days | **5 sensors:** 2 USACE pool (Lockport, Brandon Road), 1 USGS stage/discharge (CSSC), 2 ASOS precip (ORD, PWK) | Lake Michigan drainage |
 
 **Flood Type Classification:**
 - **Top-down:** Upstream zones (4-6) elevated, flows downstream to property
