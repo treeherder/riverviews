@@ -16,9 +16,6 @@ floml/
 ├── scripts/                    # Standalone analysis scripts
 │   └── analyze_events.py      # 🔍 Example event analysis
 │
-├── notebooks/                  # Jupyter notebooks
-│   └── example_analysis.ipynb # 📓 Interactive examples
-│
 ├── tests/                      # Unit tests (TODO)
 ├── requirements.txt            # Python dependencies
 ├── .env                        # Database configuration
@@ -131,12 +128,6 @@ print(f"Earliest warning: {metrics['earliest_warning_hours']:.1f} hours")
 python scripts/analyze_events.py
 ```
 
-### Interactive Exploration
-
-```bash
-jupyter notebook notebooks/example_analysis.ipynb
-```
-
 ### Load and Analyze Custom Data
 
 ```python
@@ -226,7 +217,6 @@ paired = pd.read_sql("""
 - `seaborn` - Statistical graphics
 
 **Development:**
-- `jupyter` - Interactive notebooks
 - `pytest` - Testing
 
 ## Troubleshooting
@@ -251,9 +241,8 @@ paired = pd.read_sql("""
 
 1. **Ingest more data** (from Rust daemon)
 2. **Run example analysis** (`scripts/analyze_events.py`)
-3. **Explore in Jupyter** (`notebooks/example_analysis.ipynb`)
-4. **Build custom models** for your specific use case
-5. **Write results** back to `flood_analysis` schema
+3. **Build custom models** for your specific use case
+4. **Write results** back to `flood_analysis` schema
 
 ---
 

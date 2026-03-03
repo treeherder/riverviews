@@ -91,9 +91,6 @@ __pycache__/
 *$py.class
 .Python
 
-# Jupyter notebooks checkpoints
-.ipynb_checkpoints/
-
 # Temporary files
 tmp/
 temp/
