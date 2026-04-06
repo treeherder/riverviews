@@ -161,10 +161,9 @@ CREATE INDEX IF NOT EXISTS idx_asos_obs_precip
     ON asos_observations(station_id, observation_time DESC) 
     WHERE precip_1hr_in IS NOT NULL;
 
--- Recent observations (last 24 hours)
+-- Recent observations
 CREATE INDEX IF NOT EXISTS idx_asos_obs_recent 
-    ON asos_observations(observation_time DESC) 
-    WHERE observation_time >= NOW() - INTERVAL '24 hours';
+    ON asos_observations(observation_time DESC);
 
 -- Precipitation summary queries
 CREATE INDEX IF NOT EXISTS idx_asos_summary_station_period 

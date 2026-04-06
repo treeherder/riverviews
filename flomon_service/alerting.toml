@@ -1,0 +1,40 @@
+# Alerting configuration for flomon_service
+#
+# SMS alerts are dispatched via Google Cloud Pub/Sub. The sms_gateway
+# Cloud Run service subscribes to the topic and calls Twilio to deliver
+# SMS messages to the configured recipients.
+#
+# To enable alerts:
+#   1. Set pubsub_project and pubsub_topic to match your GCP project.
+#   2. Set pubsub_enabled = true (leave false when testing locally).
+#   3. Add recipient phone numbers in E.164 format.
+#   4. Deploy the sms_gateway service (see DEPLOYMENT.md).
+
+[alerting]
+enabled = true
+
+# Google Cloud Pub/Sub settings
+pubsub_project = "REPLACE_WITH_GCP_PROJECT"
+pubsub_topic = "riverviews-alerts"
+
+# Set true to publish to Pub/Sub (requires GCE service account with pubsub.publisher).
+# Set false to log alerts to stdout only (safe for local testing).
+pubsub_enabled = false
+
+# UTC hour (0-23) to send a daily status digest even when no event is active.
+# Set to -1 to disable daily digests.
+daily_digest_hour_utc = 7
+
+[alerting.intervals_minutes]
+# How often (minutes) to send periodic update SMS while an event is active.
+# 0 = send only on severity transitions, no periodic updates.
+action   = 360   # 6 hours during action-stage event
+flood    = 180   # 3 hours at flood stage
+moderate = 120   # 2 hours at moderate flood
+major    = 60    # 1 hour at major flood (maximum frequency)
+
+[alerting.recipients]
+# Phone numbers to notify, in E.164 format (+1XXXXXXXXXX).
+# These are embedded in every Pub/Sub message; the sms_gateway reads them
+# and routes to each number individually.
+numbers = ["+15555550100"]

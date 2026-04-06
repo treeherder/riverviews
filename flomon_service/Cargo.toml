@@ -20,3 +20,6 @@ urlencoding = "2.1"  # URL encoding for CWMS API requests
 
 # HTTP server for daemon endpoint
 tiny_http = "0.12"
+
+# Base64 encoding for Pub/Sub message payloads
+base64 = "0.22"

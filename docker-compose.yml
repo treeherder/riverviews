@@ -1,0 +1,103 @@
+# docker-compose.yml — Riverviews flood monitoring stack
+#
+# Services:
+#   postgres        PostgreSQL 16 with auto-applied migrations
+#   flomon_service  Rust ingest daemon + HTTP API (port 8080)
+#   sms_gateway     Python Pub/Sub → Twilio SMS bridge (port 8081)
+#
+# Usage:
+#   cp .env.example .env          # fill in secrets
+#   docker compose up -d
+#   docker compose logs -f flomon_service
+#
+# See DEPLOYMENT.md for GCE-specific steps.
+
+version: "3.9"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flopro_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      # Passed into init-db.sh for the flopro_admin role
+      FLOPRO_ADMIN_PASSWORD: ${FLOPRO_ADMIN_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # init script — runs once on first container start
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+      # SQL migrations mounted so init-db.sh can apply them in-order
+      - ./flomon_service/sql:/migrations:ro
+    # Expose postgres to the host so you can SSH-tunnel it from a remote workstation:
+    #   ssh -N -L 5432:localhost:5432 -L 8080:localhost:8080 user@GCE_IP
+    # LOCAL ONLY: comment this out if your host already runs Postgres on 5432.
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d flopro_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # flomon_service — Rust ingest daemon
+  # ---------------------------------------------------------------------------
+  flomon_service:
+    build:
+      context: ./flomon_service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://flopro_admin:${FLOPRO_ADMIN_PASSWORD}@postgres:5432/flopro_db
+    volumes:
+      # TOML configs are NOT baked into the image — mount from the repo so
+      # you can tune thresholds without rebuilding the container.
+      - ./flomon_service/usgs_stations.toml:/app/usgs_stations.toml:ro
+      - ./flomon_service/usace_stations.toml:/app/usace_stations.toml:ro
+      - ./flomon_service/iem_asos.toml:/app/iem_asos.toml:ro
+      - ./flomon_service/zones.toml:/app/zones.toml:ro
+      - ./flomon_service/alerting.toml:/app/alerting.toml:ro
+      # Persist daemon log across restarts
+      - flomon_logs:/app/logs
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # sms_gateway — Pub/Sub → Twilio SMS bridge
+  # Only started when explicitly requested: docker compose --profile sms up
+  # ---------------------------------------------------------------------------
+  sms_gateway:
+    profiles: ["sms"]
+    build:
+      context: ./sms_gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER}
+      PORT: "8081"
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pgdata:
+  flomon_logs:

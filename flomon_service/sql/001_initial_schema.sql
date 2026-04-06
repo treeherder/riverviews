@@ -93,9 +93,11 @@ CREATE INDEX idx_gauge_readings_time
     ON usgs_raw.gauge_readings(reading_time DESC);
 
 -- Partial index for recent data (most queries)
+-- NOTE: partial index with NOW() is not allowed (must be immutable).
+-- Use a covering index on reading_time instead; the planner will naturally
+-- favour it for recent-data queries with a range predicate.
 CREATE INDEX idx_gauge_readings_recent 
-    ON usgs_raw.gauge_readings(site_code, parameter_code, reading_time DESC)
-    WHERE reading_time > NOW() - INTERVAL '30 days';
+    ON usgs_raw.gauge_readings(site_code, parameter_code, reading_time DESC);
 
 COMMENT ON TABLE usgs_raw.gauge_readings IS 'Historical USGS gauge readings at 15-minute intervals';
 COMMENT ON COLUMN usgs_raw.gauge_readings.parameter_code IS '00060=discharge, 00065=gage height (stage)';

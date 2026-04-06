@@ -8,14 +8,15 @@
 /// 5. Warehouses readings and maintains monitoring state
 /// 6. Generates alerts for threshold exceedances and staleness
 
+use crate::alert::notify::Notifier;
 use crate::db;
 use crate::logging;
+use crate::model::{GaugeReading, PARAM_STAGE};
 use crate::stations::{self, Station};
 use crate::usace_locations::{self, UsaceLocation};
 use crate::asos_locations::{self, AsosLocation};
-use crate::model::GaugeReading;
 use crate::ingest::{usgs, cwms, iem};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, Timelike, Utc};
 use postgres::Client;
 use rust_decimal::Decimal;
 use std::collections::HashMap;
@@ -58,6 +59,8 @@ pub struct Daemon {
     cwms_locations: Vec<UsaceLocation>,
     asos_locations: Vec<AsosLocation>,
     client: Option<Client>,
+    /// Optional SMS notifier — None when alerting.toml is absent or disabled.
+    notifier: Option<Notifier>,
 }
 
 impl Daemon {
@@ -69,6 +72,7 @@ impl Daemon {
             cwms_locations: Vec::new(),
             asos_locations: Vec::new(),
             client: None,
+            notifier: None,
         }
     }
     
@@ -80,6 +84,7 @@ impl Daemon {
             cwms_locations: Vec::new(),
             asos_locations: Vec::new(),
             client: None,
+            notifier: None,
         }
     }
     
@@ -188,7 +193,10 @@ impl Daemon {
         }
         
         self.client = Some(client);
-        
+
+        // Load alerting configuration (optional — missing file is not fatal).
+        self.notifier = Notifier::try_load();
+
         Ok(())
     }
     
@@ -813,17 +821,27 @@ impl Daemon {
         let mut results = HashMap::new();
         
         // Poll USGS stations
-        for station in &self.stations.clone() {
+        let stations_snapshot = self.stations.clone();
+        for station in &stations_snapshot {
             match self.poll_station(&station.site_code) {
                 Ok(readings) => {
                     let inserted = self.warehouse_readings(&readings)?;
-                    
+
+                    // Fire SMS alerts for stage readings that have configured thresholds.
+                    if let Some(thresholds) = &station.thresholds {
+                        if let Some(notifier) = self.notifier.as_mut() {
+                            for reading in readings.iter().filter(|r| r.parameter_code == PARAM_STAGE) {
+                                notifier.process_reading_alert(reading, thresholds);
+                            }
+                        }
+                    }
+
                     // Get latest timestamp from readings
                     let latest = readings.iter()
                         .filter_map(|r| chrono::DateTime::parse_from_rfc3339(&r.datetime).ok())
                         .map(|dt| dt.with_timezone(&Utc))
                         .max();
-                    
+
                     self.update_monitoring_state(&station.site_code, latest)?;
                     results.insert(format!("USGS:{}", station.site_code), inserted);
                 }
@@ -881,11 +899,22 @@ impl Daemon {
                     let usgs_count = results.iter().filter(|(k, _)| k.starts_with("USGS:")).count();
                     let cwms_count = results.iter().filter(|(k, _)| k.starts_with("CWMS:")).count();
                     let asos_count = results.iter().filter(|(k, _)| k.starts_with("ASOS:")).count();
-                    println!("✓ Poll complete: {} new readings ({} USGS, {} CWMS, {} ASOS)", 
+                    println!("✓ Poll complete: {} new readings ({} USGS, {} CWMS, {} ASOS)",
                             total, usgs_count, cwms_count, asos_count);
                 }
                 Err(e) => {
                     eprintln!("✗ Poll error: {}", e);
+                }
+            }
+
+            // Daily digest: send once per day at the configured UTC hour.
+            let hour_utc = Utc::now().hour();
+            if let Some(ref notifier) = self.notifier {
+                let digest_hour = notifier.config().daily_digest_hour_utc;
+                if digest_hour >= 0 && hour_utc == digest_hour as u32 {
+                    if let Err(e) = notifier.send_daily_digest(&[]) {
+                        eprintln!("Warning: Failed to send daily digest: {}", e);
+                    }
                 }
             }
             

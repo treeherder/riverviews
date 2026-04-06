@@ -108,8 +108,7 @@ CREATE TABLE usace.cwms_timeseries (
 CREATE INDEX idx_cwms_ts_location_time ON usace.cwms_timeseries(location_id, timestamp DESC);
 CREATE INDEX idx_cwms_ts_param_time ON usace.cwms_timeseries(parameter_id, timestamp DESC) 
     WHERE parameter_id IN ('Stage', 'Flow', 'Elev');
-CREATE INDEX idx_cwms_ts_recent ON usace.cwms_timeseries(location_id, timestamp DESC)
-    WHERE timestamp > NOW() - INTERVAL '7 days';
+CREATE INDEX idx_cwms_ts_recent ON usace.cwms_timeseries(location_id, timestamp DESC);
 
 COMMENT ON TABLE usace.cwms_timeseries IS 
     'CWMS timeseries observations (stage, flow, elevation, releases)';
