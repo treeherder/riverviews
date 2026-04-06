@@ -70,9 +70,9 @@ jobs:
         run: |
           set -e
           # Deploy from the repo clone that has .env — NOT the CI workspace.
-          # The runner user must have the repo cloned at ~/riverviews with a
-          # valid .env file containing POSTGRES_SUPERUSER_PASSWORD etc.
-          REPO="$HOME/riverviews"
+          # $HOME may differ in the systemd service context; derive it from passwd.
+          REPO="$(getent passwd "$(whoami)" | cut -d: -f6)/riverviews"
+          echo "Deploying as $(whoami) from $REPO"
           if [ ! -f "$REPO/.env" ]; then
             echo "ERROR: $REPO/.env not found. Clone the repo and create .env first."
             exit 1
