@@ -557,8 +557,8 @@ def run(stdscr, api_base: str):
 
 def _parse_args() -> str:
     p = argparse.ArgumentParser(description="Riverviews flood monitoring dashboard")
-    p.add_argument("--api", default="http://localhost:8080",
-                   help="flomon_service base URL (default: http://localhost:8080)")
+    p.add_argument("--api", default="http://34.42.32.205:8080",
+                   help="flomon_service base URL (default: http://34.42.32.205:8080)")
     return p.parse_args().api
 
 
