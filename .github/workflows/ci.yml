@@ -55,44 +55,30 @@ jobs:
   # Note: first deploy after provisioning takes ~10 min (Rust compile + backfill).
   # Subsequent deploys are faster — cargo caches layers in the Docker build cache.
   #
-  # SA role required: roles/compute.osAdminLogin (not osLogin — needs sudo for docker)
+  # Runs on a self-hosted runner installed on the GCE VM.
+  # No SSH/IAP/SA key juggling — the runner executes directly as the fiver user.
+  # Setup: GitHub repo → Settings → Actions → Runners → New self-hosted runner
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to GCE
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Deploy via gcloud compute ssh
+      - name: Pull latest and restart containers
         run: |
-          gcloud compute ssh ${{ secrets.GCP_INSTANCE }} \
-            --zone=${{ secrets.GCP_ZONE }} \
-            --tunnel-through-iap \
-            --command='
-              set -e
-              # Repo lives in fiver home; SA has sudo via osAdminLogin
-              sudo -u fiver bash -c "cd /home/fiver/riverviews && git pull origin main"
-              cd /home/fiver/riverviews
-              sudo docker compose up --build -d postgres flomon_service
-              echo "Containers restarted. Waiting for HTTP API..."
-              for i in $(seq 1 36); do
-                if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-                  echo "Service is healthy."
-                  exit 0
-                fi
-                sleep 10
-              done
-              echo "Health check timed out (6 min). Check: docker compose logs flomon_service"
-              exit 1
-            '
+          set -e
+          cd /home/fiver/riverviews
+          git pull origin main
+          docker compose up --build -d postgres flomon_service
+          echo "Containers restarted. Waiting for HTTP API..."
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Service is healthy."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check timed out (6 min). Check: docker compose logs flomon_service"
+          exit 1
