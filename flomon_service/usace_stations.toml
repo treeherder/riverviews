@@ -29,7 +29,7 @@
 [[usace_stations]]
 shef_id         = "IL07"
 shef_pool_id    = "IL07P"
-cwms_location   = "Peoria-Pool"
+cwms_location   = "IL07"
 office          = "MVR"
 name            = "Illinois River at Peoria Lock and Dam"
 river_mile      = 157.6
@@ -41,7 +41,7 @@ flood_note = "Wicket dam operation: when wickets are laid down, pool is no longe
 [[usace_stations]]
 shef_id         = "IL06"
 shef_pool_id    = "IL06P"
-cwms_location   = "Starved-Rock-Pool"
+cwms_location   = "IL06"
 office          = "MVR"
 name            = "Illinois River at Starved Rock Lock and Dam"
 river_mile      = 231.0
@@ -51,7 +51,7 @@ relevance = "HIGH UPSTREAM WARNING — closest major upstream structure to Peori
 [[usace_stations]]
 shef_id         = "IL05"
 shef_pool_id    = "IL05P"
-cwms_location   = "Marseilles-Pool"
+cwms_location   = "IL05"
 office          = "MVR"
 name            = "Illinois River at Marseilles Lock and Dam"
 river_mile      = 247.0
@@ -62,7 +62,7 @@ relevance = "UPSTREAM WARNING — approximately 90 miles upstream. Marseilles po
 [[usace_stations]]
 shef_id         = "IL04"
 shef_pool_id    = "IL04P"
-cwms_location   = "Dresden-Island-Pool"
+cwms_location   = "IL04"
 office          = "MVR"
 name            = "Illinois River at Dresden Island Lock and Dam"
 river_mile      = 271.5
@@ -72,7 +72,7 @@ relevance = "CONFLUENCE MONITOR — located at the junction of the Kankakee and 
 [[usace_stations]]
 shef_id         = "IL03"
 shef_pool_id    = "IL03P"
-cwms_location   = "Brandon-Road-Pool"
+cwms_location   = "IL03"
 office          = "MVR"
 name            = "Illinois River at Brandon Road Lock and Dam"
 river_mile      = 285.9
@@ -82,7 +82,7 @@ relevance = "CHICAGO METRO OUTFLOW MONITOR — together with Lockport, this is y
 [[usace_stations]]
 shef_id         = "IL02"
 shef_pool_id    = "IL02P"
-cwms_location   = "Lockport-Pool"
+cwms_location   = "IL02"
 office          = "MVR"
 name            = "Chicago Sanitary and Ship Canal at Lockport Lock and Dam"
 river_mile      = 291.1
@@ -99,7 +99,7 @@ relevance = "LAKE MICHIGAN INFLOW CONTROL POINT — the upstream terminus of the
 [[usace_stations]]
 shef_id         = "IL08"
 shef_pool_id    = "IL08P"
-cwms_location   = "LaGrange-Pool"
+cwms_location   = "IL08"
 office          = "MVR"
 name            = "Illinois River at New LaGrange Lock and Dam"
 river_mile      = 80.2
@@ -115,7 +115,7 @@ flood_note = "LaGrange tailwater == Mississippi backwater proxy. When LaGrange t
 
 [[usace_stations]]
 shef_id         = "GRFI2"
-cwms_location   = "Grafton"
+cwms_location   = "Grafton-Mississippi"
 office          = "MVS"
 name            = "Mississippi River at Grafton, IL"
 river_mile_above_ohio = 218.0
@@ -125,7 +125,7 @@ flood_note = "Cross-reference with USGS 05587450 (Illinois River at Grafton) for
 
 [[usace_stations]]
 name            = "Mississippi River at Alton, IL"
-cwms_location   = "Alton-IL"
+cwms_location   = "ALTI2"
 shef_id         = "ALTI2"
 office          = "MVS"
 data_types      = ["stage", "discharge"]
@@ -133,7 +133,7 @@ relevance = "UPSTREAM MISSISSIPPI REFERENCE — Alton is upstream of Grafton and
 
 [[usace_stations]]
 name            = "Mississippi River at Hannibal, MO"
-cwms_location   = "Hannibal-MO"
+cwms_location   = "HNLM7"
 shef_id         = "HNLM7"
 office          = "MVS"
 data_types      = ["stage", "discharge"]

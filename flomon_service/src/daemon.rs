@@ -631,7 +631,7 @@ impl Daemon {
                  (location_id, timeseries_id, parameter_id, parameter_type, interval, duration, version,
                   timestamp, value, unit, quality_code)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                 ON CONFLICT (location_id, timestamp, parameter_id) DO NOTHING",
+                 ON CONFLICT (timeseries_id, timestamp) DO NOTHING",
                 &[
                     &record.location_id,
                     &record.timeseries_id,
