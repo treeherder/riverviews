@@ -229,16 +229,25 @@ pub fn fetch_zone_detail(client: &mut Client, zone_id: usize) -> Result<ZoneDeta
                 }
             } else {
                 // For CWMS/ASOS sensors, fetch from appropriate tables
-                let (val, unit, ts, stale) = fetch_sensor_reading(client, sensor)?;
-                if val.is_some() {
-                    active_count += 1;
-                    if stale.unwrap_or(9999) > 120 {
-                        stale_count += 1;
+                match fetch_sensor_reading(client, sensor) {
+                    Ok((val, unit, ts, stale)) => {
+                        if val.is_some() {
+                            active_count += 1;
+                            if stale.unwrap_or(9999) > 120 {
+                                stale_count += 1;
+                            }
+                        } else {
+                            stale_count += 1;
+                        }
+                        (val, unit, ts, stale)
                     }
-                } else {
-                    stale_count += 1;
+                    Err(e) => {
+                        // Log error but continue processing other sensors
+                        eprintln!("Failed to fetch sensor {}: {}", sensor.primary_id(), e);
+                        stale_count += 1;
+                        (None, None, None, None)
+                    }
                 }
-                (val, unit, ts, stale)
             };
         
         // Check thresholds
