@@ -40,16 +40,17 @@ jobs:
         run: cargo test --lib
 
   # ---------------------------------------------------------------------------
-  # deploy — SSH into GCE, pull latest, rebuild image, restart containers
+  # deploy — use gcloud compute ssh to pull latest and restart containers
   #
   # Only runs on push to main after test passes.
   #
   # Required repository secrets:
-  #   GCE_HOST     — external IP address of the GCE VM
-  #   GCE_USER     — SSH username (e.g. your GCP account username)
-  #   GCE_SSH_KEY  — private SSH key (contents of ~/.ssh/id_ed25519 or similar)
-  #                  The corresponding public key must be in the VM's
-  #                  ~/.ssh/authorized_keys or GCP OS Login.
+  #   GCP_SA_KEY       — service account JSON key (base64-encoded or raw JSON)
+  #                      The SA needs roles: compute.osLogin + compute.viewer
+  #                      (or compute.instanceAdmin.v1 for broader access)
+  #   GCP_PROJECT_ID   — GCP project ID (e.g. my-project-123456)
+  #   GCP_INSTANCE     — VM instance name (e.g. riverviews-vm)
+  #   GCP_ZONE         — zone the VM is in (e.g. us-central1-a)
   #
   # Note: first deploy after provisioning takes ~10 min (Rust compile + backfill).
   # Subsequent deploys are faster — cargo caches layers in the Docker build cache.
@@ -61,30 +62,34 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
         with:
-          host: ${{ secrets.GCE_HOST }}
-          username: ${{ secrets.GCE_USER }}
-          key: ${{ secrets.GCE_SSH_KEY }}
-          script: |
-            set -e
-            cd ~/riverviews
-            git pull origin main
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-            # Rebuild flomon_service image and restart — postgres is untouched
-            # unless its config changed. The pgdata volume is never removed here.
-            docker compose up --build -d postgres flomon_service
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-            echo "Containers restarted. Waiting for HTTP API..."
-            # Health check — the API comes up after backfill on first run,
-            # or within ~5s on subsequent restarts when DB is already populated.
-            for i in $(seq 1 36); do
-              if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
-                echo "Service is healthy."
-                exit 0
-              fi
-              sleep 10
-            done
-            echo "Health check timed out (6 min). Service may still be backfilling on first run — check: docker compose logs flomon_service"
-            exit 1
+      - name: Deploy via gcloud compute ssh
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_INSTANCE }} \
+            --zone=${{ secrets.GCP_ZONE }} \
+            --tunnel-through-iap \
+            --command='
+              set -e
+              cd ~/riverviews
+              git pull origin main
+              docker compose up --build -d postgres flomon_service
+              echo "Containers restarted. Waiting for HTTP API..."
+              for i in $(seq 1 36); do
+                if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+                  echo "Service is healthy."
+                  exit 0
+                fi
+                sleep 10
+              done
+              echo "Health check timed out (6 min). Check: docker compose logs flomon_service"
+              exit 1
+            '

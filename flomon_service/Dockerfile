@@ -22,7 +22,7 @@ FROM debian:bookworm-slim
 # Runtime libs: libssl for reqwest (rustls means no openssl needed),
 # ca-certificates for HTTPS to USGS/CWMS/IEM, libpq for postgres crate.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates libpq5 && \
+    apt-get install -y --no-install-recommends ca-certificates libpq5 curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
