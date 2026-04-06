@@ -560,12 +560,15 @@ fn fetch_sensor_reading(
         if let Some(station_id) = &sensor.station_id {
             let rows = client.query(
                 "SELECT precip_1hr_in, observation_time
-                 FROM asos_observations
+                 FROM public.asos_observations
                  WHERE station_id = $1
                  ORDER BY observation_time DESC
                  LIMIT 1",
                 &[station_id]
-            ).map_err(|e| format!("ASOS query failed: {}", e))?;
+            ).map_err(|e| {
+                eprintln!("ASOS query error for station {}: {:?}", station_id, e);
+                format!("ASOS query failed: {}", e)
+            })?;
             
             if let Some(row) = rows.first() {
                 let value_opt: Option<f64> = row.get(0);
