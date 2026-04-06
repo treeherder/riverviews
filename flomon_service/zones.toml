@@ -80,6 +80,7 @@ relevance = """Medium lead time (12–24 hours to Grafton). Confirms whether a H
 [[zones.zone_0.sensors]]
 id          = "GRFI2"
 usgs_id     = "05587450"
+cwms_location = "Grafton-Mississippi"
 source      = "USACE/MVS + USGS"
 type        = "stage_discharge"
 role        = "direct"
@@ -107,7 +108,7 @@ description = """The reach between the Mississippi confluence and Peoria. LaGran
 [[zones.zone_1.sensors]]
 id          = "IL08P"
 shef_id     = "IL08"
-cwms_location = "LaGrange-Pool"
+cwms_location = "IL08"
 source      = "USACE/MVR"
 type        = "pool_elevation"
 role        = "direct"
@@ -119,7 +120,7 @@ relevance = """PRIMARY BACKWATER DIAGNOSTIC — pool elevation here should be ne
 [[zones.zone_1.sensors]]
 id          = "IL08TW"
 shef_id     = "IL08"
-cwms_location = "LaGrange-TW"
+cwms_location = "IL08"
 source      = "USACE/MVR"
 type        = "tailwater_elevation"
 role        = "boundary"
@@ -169,7 +170,7 @@ description = """The immediate zone containing your property. Sensor readings he
 [[zones.zone_2.sensors]]
 id          = "IL07P"
 shef_id     = "IL07"
-cwms_location = "Peoria-Pool"
+cwms_location = "IL07"
 source      = "USACE/MVR"
 type        = "pool_elevation"
 role        = "direct"
@@ -181,7 +182,7 @@ relevance = """MOST IMPORTANT SINGLE READING for your property. Pool elevation d
 
 [[zones.zone_2.sensors]]
 id          = "IL07TW"
-cwms_location = "Peoria-TW"
+cwms_location = "IL07"
 source      = "USACE/MVR"
 type        = "tailwater_elevation"
 role        = "boundary"
@@ -304,7 +305,7 @@ description = """The main stem reach from Starved Rock south to Henry. Flow puls
 [[zones.zone_4.sensors]]
 id          = "IL06P"
 shef_id     = "IL06"
-cwms_location = "Starved-Rock-Pool"
+cwms_location = "IL06"
 source      = "USACE/MVR"
 type        = "pool_elevation"
 role        = "boundary"
@@ -362,7 +363,7 @@ description = """The reach where the Illinois River forms from the junction of t
 [[zones.zone_5.sensors]]
 id          = "IL04P"
 shef_id     = "IL04"
-cwms_location = "Dresden-Island-Pool"
+cwms_location = "IL04"
 source      = "USACE/MVR"
 type        = "pool_elevation"
 role        = "direct"
@@ -411,7 +412,7 @@ description = """The Chicago Area Waterway System controls diversion of Lake Mic
 [[zones.zone_6.sensors]]
 id          = "IL02P"
 shef_id     = "IL02"
-cwms_location = "Lockport-Pool"
+cwms_location = "IL02"
 source      = "USACE/MVR"
 type        = "pool_elevation"
 role        = "boundary"
@@ -424,7 +425,7 @@ relevance = """UPPER SYSTEM BOUNDARY — pool elevation here is the downstream e
 [[zones.zone_6.sensors]]
 id          = "IL03P"
 shef_id     = "IL03"
-cwms_location = "Brandon-Road-Pool"
+cwms_location = "IL03"
 source      = "USACE/MVR"
 type        = "pool_elevation"
 role        = "direct"
