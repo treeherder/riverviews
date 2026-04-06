@@ -210,6 +210,35 @@ impl Daemon {
         &self.cwms_locations
     }
     
+    /// Get reference to loaded ASOS locations
+    pub fn get_asos_locations(&self) -> &[AsosLocation] {
+        &self.asos_locations
+    }
+    
+    /// Check staleness of ASOS data for a specific station
+    pub fn check_asos_staleness(&mut self, station_id: &str) -> Result<Option<Duration>, Box<dyn Error>> {
+        let client = self.client.as_mut()
+            .ok_or("Daemon not initialized")?;
+        
+        let rows = client.query(
+            "SELECT MAX(observation_time) as latest 
+             FROM asos_observations 
+             WHERE station_id = $1",
+            &[&station_id]
+        )?;
+        
+        if rows.is_empty() {
+            return Ok(None);
+        }
+        
+        let latest: Option<DateTime<Utc>> = rows[0].get(0);
+        
+        match latest {
+            Some(dt) => Ok(Some(Utc::now() - dt)),
+            None => Ok(None),
+        }
+    }
+    
     /// Check staleness of data for a specific station
     pub fn check_staleness(&mut self, site_code: &str) -> Result<Option<Duration>, Box<dyn Error>> {
         let client = self.client.as_mut()
@@ -683,7 +712,7 @@ impl Daemon {
     }
     
     /// Backfill ASOS historical data for a station
-    fn backfill_asos_station(&mut self, station_id: &str, days: i64) -> Result<usize, Box<dyn Error>> {
+    pub fn backfill_asos_station(&mut self, station_id: &str, days: i64) -> Result<usize, Box<dyn Error>> {
         let http_client = reqwest::blocking::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()?;

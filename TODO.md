@@ -5,9 +5,9 @@
 ## ✅ Completed
 
 - Zone-based HTTP API (`/zones`, `/zone/{id}`, `/status`, `/backwater`, `/health`)
-- USGS NWIS ingest (real-time IV + 87 years DV historical backfill)
-- USACE CWMS ingest with runtime catalog discovery
-- IEM/ASOS precipitation ingest with basin assignment
+- USGS NWIS ingest (real-time IV every 15min + startup backfill up to 120 days IV)
+- USACE CWMS ingest with runtime catalog discovery (pool, tailwater, stage)
+- IEM/ASOS precipitation ingest with basin assignment (hourly, all weather fields)
 - 7-zone hydrological model (Illinois River reference implementation)
 - Flood type classification (top-down, bottom-up, local tributary, compound)
 - Backwater detection (Grafton stage + LaGrange pool/tailwater differential)
@@ -21,9 +21,19 @@
 - Integration test suites (ASOS, USGS, CWMS, daemon lifecycle, peak flow)
 - Dockerfile healthcheck (curl-based)
 
+## Ingest Bugs & Known Gaps
+
+- **ASOS: no startup backfill** — `backfill_asos_station()` is defined in `daemon.rs` but never called from `main.rs`; ASOS data only accumulates forward from first run; fix: add ASOS staleness check + backfill call in `main.rs` startup sequence alongside USGS/CWMS
+- **USGS: DV history not fetched** — `backfill_days: 120` (default) only fetches IV data; to get years of daily history, increase `backfill_days > 120` or add a one-time historical ingest CLI subcommand; the "87 years" history claim requires a manual config change or separate tool
+- **CWMS staleness check uses `location_id`** — `check_cwms_staleness()` queries all timeseries for a location in aggregate; if pool has fresh data but tailwater is empty, tailwater won't get backfilled on startup
+- **`asos_precip_summary` table is never populated** — schema defines 6h/12h/24h/48h pre-computed rolling totals, but no code ever inserts into it; `/zone/{id}` now correctly sums raw `asos_observations` directly instead
+- **`IemAsosMinute` (1-min precip) struct unused** — the 1-minute ASOS data structure exists in `ingest/iem.rs` but `fetch_recent_precip` only fetches hourly data; no 1-min poll path exists in the daemon
+- **ASOS poll ignores priority intervals** — all ASOS stations (PRIMARY through EXTENDED) are polled every 15min; the `poll_interval_minutes` field from priority is stored in DB but the daemon doesn't respect it
+- **USGS only fetches 2 parameters** — hardcoded `["00060", "00065"]` (discharge + stage); stations may also report temperature (00010), conductance (00095), pH (00400) — not currently ingested
+
 ---
 
-## Generic Multi-Waterway Architecture
+
 
 - `waterway.toml` — top-level deployment config: `waterway_id`, display name, bounding box, datum, timezone
 - Dynamic zone deserialization — replace hardcoded `ZoneCollection { zone_0…zone_6 }` with `HashMap<String, Zone>`

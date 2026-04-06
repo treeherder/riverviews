@@ -186,6 +186,50 @@ fn main() {
         println!();
     }
     
+    // Check ASOS stations for stale data
+    println!("📋 Checking ASOS data freshness...");
+    let asos_locations: Vec<_> = daemon.get_asos_locations().to_vec();
+    let mut asos_backfill_needed = Vec::new();
+    
+    for location in &asos_locations {
+        // Strip leading "K" to match IEM API station codes
+        let station_id = if location.station_id.starts_with('K') && location.station_id.len() == 4 {
+            &location.station_id[1..]
+        } else {
+            &location.station_id[..]
+        };
+        
+        match daemon.check_asos_staleness(station_id) {
+            Ok(None) => {
+                println!("   {} - No data found (needs backfill)", location.station_id);
+                asos_backfill_needed.push(station_id.to_string());
+            }
+            Ok(Some(staleness)) => {
+                let hours = staleness.num_hours();
+                if hours > 2 {
+                    println!("   {} - Data is {} hours old (stale)", location.station_id, hours);
+                    asos_backfill_needed.push(station_id.to_string());
+                } else {
+                    println!("   {} - Data is fresh ({} min old)", location.station_id, staleness.num_minutes());
+                }
+            }
+            Err(e) => {
+                eprintln!("   {} - Error checking staleness: {}", location.station_id, e);
+            }
+        }
+    }
+    
+    if !asos_backfill_needed.is_empty() {
+        println!("\n📥 Backfilling {} ASOS stations (last 30 days)...", asos_backfill_needed.len());
+        for station_id in &asos_backfill_needed {
+            match daemon.backfill_asos_station(station_id, 30) {
+                Ok(count) => println!("   ✓ {} - Inserted {} observations", station_id, count),
+                Err(e) => eprintln!("   ✗ {} - Backfill failed: {}", station_id, e),
+            }
+        }
+        println!();
+    }
+    
     // Start HTTP endpoint if requested (in background thread)
     if let Some(port) = endpoint_port {
         println!("🚀 Starting HTTP endpoint server...");
