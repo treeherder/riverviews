@@ -54,6 +54,8 @@ jobs:
   #
   # Note: first deploy after provisioning takes ~10 min (Rust compile + backfill).
   # Subsequent deploys are faster — cargo caches layers in the Docker build cache.
+  #
+  # SA role required: roles/compute.osAdminLogin (not osLogin — needs sudo for docker)
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy to GCE
@@ -79,9 +81,10 @@ jobs:
             --tunnel-through-iap \
             --command='
               set -e
-              cd ~/riverviews
-              git pull origin main
-              docker compose up --build -d postgres flomon_service
+              # Repo lives in fiver home; SA has sudo via osAdminLogin
+              sudo -u fiver bash -c "cd /home/fiver/riverviews && git pull origin main"
+              cd /home/fiver/riverviews
+              sudo docker compose up --build -d postgres flomon_service
               echo "Containers restarted. Waiting for HTTP API..."
               for i in $(seq 1 36); do
                 if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
