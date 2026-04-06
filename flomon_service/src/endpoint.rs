@@ -79,7 +79,11 @@ pub struct SensorDetailResponse {
     // Thresholds (if applicable)
     pub flood_stage_ft: Option<f64>,
     pub action_stage_ft: Option<f64>,
-    
+
+    // Precipitation accumulations (ASOS sensors only)
+    pub precip_24h_in: Option<f64>,
+    pub precip_48h_in: Option<f64>,
+
     // Relevance explanation
     pub relevance: String,
 }
@@ -250,6 +254,14 @@ pub fn fetch_zone_detail(client: &mut Client, zone_id: usize) -> Result<ZoneDeta
             }
         }
         
+        let (precip_24h_in, precip_48h_in) = if sensor.is_asos() {
+            sensor.station_id.as_deref()
+                .map(|sid| fetch_precip_totals(client, sid))
+                .unwrap_or((None, None))
+        } else {
+            (None, None)
+        };
+
         sensors.push(SensorDetailResponse {
             sensor_id: sensor.primary_id(),
             sensor_type: sensor.sensor_type.clone(),
@@ -266,6 +278,8 @@ pub fn fetch_zone_detail(client: &mut Client, zone_id: usize) -> Result<ZoneDeta
             staleness_minutes: staleness,
             flood_stage_ft: sensor.flood_stage_ft,
             action_stage_ft: sensor.action_stage_ft,
+            precip_24h_in,
+            precip_48h_in,
             relevance: sensor.relevance.clone(),
         });
     }
@@ -571,6 +585,31 @@ fn fetch_sensor_reading(
     }
     
     Ok((None, None, None, None))
+}
+
+/// Fetch precipitation accumulations for an ASOS station.
+/// Returns (24h total, 48h total). Returns None for a window if no observations exist.
+fn fetch_precip_totals(client: &mut Client, station_id: &str) -> (Option<f64>, Option<f64>) {
+    let query = "
+        SELECT
+            CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(precip_1hr_in), 0.0) ELSE NULL END
+        FROM asos_observations
+        WHERE station_id = $1
+          AND observation_time >= NOW() - INTERVAL '1 hour' * $2::int";
+
+    let p24 = client
+        .query(query, &[&station_id, &24_i32])
+        .ok()
+        .and_then(|rows| rows.into_iter().next())
+        .and_then(|row| row.get::<_, Option<f64>>(0));
+
+    let p48 = client
+        .query(query, &[&station_id, &48_i32])
+        .ok()
+        .and_then(|rows| rows.into_iter().next())
+        .and_then(|row| row.get::<_, Option<f64>>(0));
+
+    (p24, p48)
 }
 
 /// Fetch CWMS stage for a specific location

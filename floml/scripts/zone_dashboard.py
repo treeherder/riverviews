@@ -291,9 +291,21 @@ def draw_zone_card(win, y: int, x: int, h: int, w: int,
             shown["flow"] = True;  line += 1
 
         elif stype in ("precipitation", "precip_grid") and not shown["precip"]:
-            col = P["blue"] if (val or 0) > 0.0 else P["dim"]
-            sa(win, y+line, x+2, f"Precip {fmt_val(val, 'in')}", col)
-            shown["precip"] = True;  line += 1
+            p24 = s.get("precip_24h_in")
+            p48 = s.get("precip_48h_in")
+            if p24 is not None:
+                col = P["blue"] if p24 > 0.0 else P["dim"]
+                sa(win, y+line, x+2, f"24h  {p24:.2f}in", col)
+                line += 1
+                if p48 is not None and line < h - 2:
+                    col48 = P["blue"] if p48 > 0.0 else P["dim"]
+                    sa(win, y+line, x+2, f"48h  {p48:.2f}in", col48)
+                    line += 1
+            else:
+                col = P["blue"] if (val or 0) > 0.0 else P["dim"]
+                sa(win, y+line, x+2, f"1hr  {fmt_val(val, 'in')}", col)
+                line += 1
+            shown["precip"] = True
 
     # Threshold alerts
     above_flood  = status.get("sensors_above_flood",  [])
@@ -371,7 +383,14 @@ def draw_zone_detail(win, zone: Dict, P: Dict[str, int], scroll: int):
         stale = s.get("staleness_minutes")
         src   = (s.get("source") or "")[:4]
 
-        val_s   = f"{fmt_val(val, unit):>9}"
+        # For precip sensors, show 24h total in value column if available
+        p24    = s.get("precip_24h_in")
+        p48    = s.get("precip_48h_in")
+        is_precip = stype in ("precipitation", "precip_grid")
+        if is_precip and p24 is not None:
+            val_s = f"24h:{p24:.2f}in"
+        else:
+            val_s   = f"{fmt_val(val, unit):>9}"
         bar_s   = stage_bar(val, flood, 8) if flood else " " * 8
         flood_s = f"{flood:.1f}ft" if flood else (f"act:{act:.1f}" if act else "   --  ")
         stale_s = f"{fmt_stale(stale):>5}"
@@ -387,6 +406,12 @@ def draw_zone_detail(win, zone: Dict, P: Dict[str, int], scroll: int):
                 f"{bar_s} {flood_s:<8}  {stale_s}  {src}")
         sa(win, row, 2, line[:w-3], row_attr)
         row += 1
+
+        # Extra row for 48h precip when both totals available
+        if is_precip and p24 is not None and p48 is not None and row < h - 4:
+            col48 = P["blue"] if p48 > 0.0 else P["dim"]
+            sa(win, row, 2, f"  {'':27}  {'':16}  48h:{p48:.2f}in", col48)
+            row += 1
 
     hline(win, row, 1, w-2, P["dim"])
 
