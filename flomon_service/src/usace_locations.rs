@@ -358,9 +358,9 @@ mod tests {
         // Should have at least Peoria, LaGrange, and Grafton
         assert!(locations.len() >= 3, "Expected at least 3 locations");
         
-        // Find Peoria
+        // Find Peoria (by name, not CWMS location which is now IL07)
         let peoria = locations.iter()
-            .find(|loc| loc.cwms_location.contains("Peoria"))
+            .find(|loc| loc.name.contains("Peoria"))
             .expect("Peoria location not found");
         
         assert_eq!(peoria.office, "MVR");

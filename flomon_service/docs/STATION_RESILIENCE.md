@@ -180,10 +180,104 @@ Before production deployment:
 ## Future Enhancements
 
 1. **Station Health Dashboard**: Real-time availability display
-2. **Automatic Backfill**: When station recovers, fetch missed data
+2. **Automatic Backfill**: When station recovers, fetch missed data ✅ *Implemented in 007_backfill_tracking.sql*
 3. **Redundant Stations**: Define backup stations for critical locations
 4. **Parameter Fallbacks**: Estimate missing values from nearby stations
 5. **USGS Status API**: Query site status instead of waiting for failures
+
+## Network Resilience
+
+### Timeout and Retry Strategy
+
+**Implemented Mitigations:**
+- **Increased Timeout**: 45 seconds (up from 15s) to handle slow network paths
+- **Exponential Backoff Retry**: 3 attempts with 1s, 2s, 4s delays between retries
+- **Daily Values Fallback**: If instantaneous values endpoint times out, fall back to daily values endpoint (different server infrastructure)
+- **Thread Pool Parallelization**: 8 worker threads for parallel polling (prevents one timeout from blocking others)
+
+**Configuration:**
+```bash
+# Set worker count (default: 8)
+export POLL_WORKERS=12
+```
+
+### Cloud Deployment Network Issues
+
+**Symptom**: When deployed on GCE (Google Cloud Engine), USGS NWIS API requests frequently timeout even though the same requests work from local development machines.
+
+**Root Causes:**
+1. **Route Inefficiency**: Cloud provider networks may take suboptimal routes to USGS servers
+2. **Rate Limiting**: USGS may rate-limit requests from cloud IP ranges more aggressively
+3. **Firewall/NAT Overhead**: Cloud egress through NAT gateways adds latency
+4. **Geographic Routing**: USGS servers may prioritize requests from certain geographic regions
+
+**Diagnostic Commands:**
+```bash
+# Test from GCE VM
+time curl -w "\nTotal: %{time_total}s\n" \
+  "https://waterservices.usgs.gov/nwis/iv/?sites=05568500&period=PT1H&format=json"
+
+# Compare with local machine
+# If GCE times are >10s and local <2s, network path is the issue
+
+# Traceroute to identify bottleneck
+traceroute waterservices.usgs.gov
+```
+
+### VPN/Proxy Solution (Future Enhancement)
+
+If network timeouts persist after implementing retry logic and fallbacks, consider:
+
+**Option 1: Cloud VPN to Residential/University Network**
+- Deploy lightweight VPN client on GCE VM
+- Route USGS requests through a residential ISP connection
+- Bypasses cloud-specific routing/rate-limiting issues
+- **Trade-off**: Adds VPN maintenance complexity
+
+**Option 2: HTTP Proxy Service**
+- Use a proxy service (e.g., ScraperAPI, Bright Data) with residential IPs
+- Only for USGS requests (CWMS and ASOS stay direct)
+- **Trade-off**: Monthly cost (~$30-100), additional latency
+
+**Option 3: Multi-Region Fallback**
+- Deploy daemon in multiple cloud regions (us-central, us-east, us-west)
+- Primary daemon in us-central1 (closest to Illinois)
+- On timeout, failover to alternate region
+- **Trade-off**: Higher infrastructure cost
+
+**Recommendation**: 
+1. Monitor station_health table for persistent timeout patterns
+2. If >50% of polls timeout for >7 days, implement Option 1 (VPN)
+3. VPN setup: WireGuard on home Raspberry Pi, GCE client connects, route only USGS traffic
+
+**Implementation Sketch:**
+```bash
+# On home network (Raspberry Pi / spare machine)
+sudo apt install wireguard
+wg genkey | tee privatekey | wg pubkey > publickey
+# Configure WireGuard server (10.0.0.1/24)
+
+# On GCE VM
+sudo apt install wireguard
+# Add WireGuard client config
+# Route 52.35.0.0/16 (USGS IP range) through VPN tunnel
+sudo ip route add 52.35.0.0/16 via 10.0.0.1 dev wg0
+```
+
+**Query station_health for timeout analysis:**
+```sql
+-- Check which stations have persistent timeouts
+SELECT 
+    station_id,
+    consecutive_failures,
+    last_error,
+    last_successful_poll,
+    NOW() - last_successful_poll AS time_since_success
+FROM public.station_health
+WHERE source_type = 'USGS'
+  AND consecutive_failures > 5
+ORDER BY consecutive_failures DESC;
+```
 
 ## References
 
@@ -191,3 +285,5 @@ Before production deployment:
 - NWS Site Maintenance: https://water.noaa.gov/about/
 - Station Registry: `src/stations.rs`
 - Integration Tests: `stations.rs::integration_tests`
+- Backfill Tracking: `sql/007_backfill_tracking.sql`
+- WireGuard VPN: https://www.wireguard.com/quickstart/

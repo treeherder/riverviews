@@ -18,9 +18,9 @@ use crate::asos_locations::{self, AsosLocation};
 use crate::ingest::{usgs, cwms, iem};
 use chrono::{DateTime, Duration, Timelike, Utc};
 use postgres::Client;
-use rust_decimal::Decimal;
 use std::collections::HashMap;
 use std::error::Error;
+use std::sync::mpsc;
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -61,11 +61,20 @@ pub struct Daemon {
     client: Option<Client>,
     /// Optional SMS notifier — None when alerting.toml is absent or disabled.
     notifier: Option<Notifier>,
+    /// Thread pool for parallel HTTP requests
+    thread_pool: threadpool::ThreadPool,
 }
 
 impl Daemon {
     /// Create a new daemon instance with default configuration
     pub fn new() -> Self {
+        // Use worker count = number of stations for good parallelism
+        // Default to 8 workers (can handle 8 USGS + concurrent CWMS/ASOS)
+        let worker_count = std::env::var("POLL_WORKERS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(8);
+        
         Self {
             config: DaemonConfig::default(),
             stations: Vec::new(),
@@ -73,11 +82,17 @@ impl Daemon {
             asos_locations: Vec::new(),
             client: None,
             notifier: None,
+            thread_pool: threadpool::ThreadPool::new(worker_count),
         }
     }
     
     /// Create daemon with custom configuration
     pub fn with_config(config: DaemonConfig) -> Self {
+        let worker_count = std::env::var("POLL_WORKERS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(8);
+        
         Self {
             config,
             stations: Vec::new(),
@@ -85,6 +100,7 @@ impl Daemon {
             asos_locations: Vec::new(),
             client: None,
             notifier: None,
+            thread_pool: threadpool::ThreadPool::new(worker_count),
         }
     }
     
@@ -729,29 +745,96 @@ impl Daemon {
     
     /// Poll a single station for latest data
     pub fn poll_station(&mut self, site_code: &str) -> Result<Vec<GaugeReading>, Box<dyn Error>> {
-        // Build URL for instantaneous values (last 4 hours to ensure we get recent data)
-        // USGS updates IV data every 15-60 minutes depending on the station
+        Self::fetch_usgs_readings(site_code)
+    }
+
+    /// Static method to fetch USGS readings (can be called from threads)
+    fn fetch_usgs_readings(site_code: &str) -> Result<Vec<GaugeReading>, Box<dyn Error>> {
+        // Try instantaneous values with retry logic
+        match Self::fetch_usgs_iv_with_retry(site_code, 3) {
+            Ok(readings) => Ok(readings),
+            Err(e) => {
+                // If IV endpoint fails, fall back to daily values for last 2 days
+                eprintln!("IV endpoint failed for {}, trying daily values fallback: {}", site_code, e);
+                Self::fetch_usgs_dv_fallback(site_code)
+            }
+        }
+    }
+
+    fn fetch_usgs_iv_with_retry(site_code: &str, max_attempts: u32) -> Result<Vec<GaugeReading>, Box<dyn Error>> {
         let url = usgs::build_iv_url(
             &[site_code],
             &["00060", "00065"], // Discharge and stage
             "PT4H", // Last 4 hours
         );
         
-        // Fetch data from USGS API
         let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(15))
+            .timeout(std::time::Duration::from_secs(45)) // Increased from 15s
+            .build()?;
+        
+        let mut last_error = None;
+        
+        for attempt in 1..=max_attempts {
+            match client.get(&url).send() {
+                Ok(response) => {
+                    if !response.status().is_success() {
+                        return Err(format!("USGS API returned status {}", response.status()).into());
+                    }
+                    
+                    let body = response.text()?;
+                    let readings = usgs::parse_iv_response(&body)?;
+                    
+                    if attempt > 1 {
+                        eprintln!("✓ USGS {} succeeded on attempt {}/{}", site_code, attempt, max_attempts);
+                    }
+                    
+                    return Ok(readings);
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < max_attempts {
+                        let backoff_ms = 1000 * 2_u64.pow(attempt - 1); // Exponential: 1s, 2s, 4s
+                        eprintln!("USGS {} attempt {}/{} failed, retrying in {}ms...", 
+                                 site_code, attempt, max_attempts, backoff_ms);
+                        std::thread::sleep(std::time::Duration::from_millis(backoff_ms));
+                    }
+                }
+            }
+        }
+        
+        Err(format!("USGS {} failed after {} attempts: {}", 
+                   site_code, max_attempts, 
+                   last_error.unwrap()).into())
+    }
+
+    fn fetch_usgs_dv_fallback(site_code: &str) -> Result<Vec<GaugeReading>, Box<dyn Error>> {
+        let now = Utc::now();
+        let start_date = (now - chrono::Duration::days(2)).format("%Y-%m-%d").to_string();
+        let end_date = now.format("%Y-%m-%d").to_string();
+        
+        let url = usgs::build_dv_url(
+            &[site_code],
+            &["00060", "00065"], // Discharge and stage
+            &start_date,
+            &end_date,
+        );
+        
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
             .build()?;
         
         let response = client.get(&url).send()?;
         
         if !response.status().is_success() {
-            return Err(format!("USGS API returned status {}", response.status()).into());
+            return Err(format!("USGS DV API returned status {}", response.status()).into());
         }
         
         let body = response.text()?;
         
-        // Parse response - note this returns the most recent value per parameter
+        // DV endpoint uses same response structure as IV, just different time resolution
         let readings = usgs::parse_iv_response(&body)?;
+        
+        eprintln!("✓ Daily values fallback succeeded for {} ({} readings)", site_code, readings.len());
         
         Ok(readings)
     }
@@ -845,22 +928,251 @@ impl Daemon {
         Ok(())
     }
     
+    /// Update station_health after successful poll
+    fn update_station_health_success(
+        &mut self,
+        source_type: &str,
+        station_id: &str,
+        last_reading_time: Option<DateTime<Utc>>,
+        inserted_count: usize
+    ) -> Result<(), Box<dyn Error>> {
+        let client = self.client.as_mut()
+            .ok_or("Daemon not initialized")?;
+        
+        let now = Utc::now();
+        
+        // Update last_successful_warehouse only if we inserted new data
+        if inserted_count > 0 {
+            client.execute(
+                "INSERT INTO public.station_health 
+                 (source_type, station_id, last_successful_poll, last_successful_warehouse, 
+                  last_reading_timestamp, consecutive_failures, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, 0, $6)
+                 ON CONFLICT (source_type, station_id) DO UPDATE SET
+                    last_successful_poll = EXCLUDED.last_successful_poll,
+                    last_successful_warehouse = EXCLUDED.last_successful_warehouse,
+                    last_reading_timestamp = COALESCE(EXCLUDED.last_reading_timestamp, station_health.last_reading_timestamp),
+                    consecutive_failures = 0,
+                    last_error = NULL,
+                    updated_at = EXCLUDED.updated_at",
+                &[&source_type, &station_id, &now, &now, &last_reading_time, &now]
+            )?;
+        } else {
+            // Poll succeeded but no new data
+            client.execute(
+                "INSERT INTO public.station_health 
+                 (source_type, station_id, last_successful_poll, last_reading_timestamp, 
+                  consecutive_failures, updated_at)
+                 VALUES ($1, $2, $3, $4, 0, $5)
+                 ON CONFLICT (source_type, station_id) DO UPDATE SET
+                    last_successful_poll = EXCLUDED.last_successful_poll,
+                    last_reading_timestamp = COALESCE(EXCLUDED.last_reading_timestamp, station_health.last_reading_timestamp),
+                    consecutive_failures = 0,
+                    last_error = NULL,
+                    updated_at = EXCLUDED.updated_at",
+                &[&source_type, &station_id, &now, &last_reading_time, &now]
+            )?;
+        }
+        
+        Ok(())
+    }
+    
+    /// Update station_health after failed poll
+    fn update_station_health_failure(
+        &mut self,
+        source_type: &str,
+        station_id: &str,
+        error: &str
+    ) -> Result<(), Box<dyn Error>> {
+        let client = self.client.as_mut()
+            .ok_or("Daemon not initialized")?;
+        
+        client.execute(
+            "INSERT INTO public.station_health 
+             (source_type, station_id, consecutive_failures, last_error, updated_at)
+             VALUES ($1, $2, 1, $3, $4)
+             ON CONFLICT (source_type, station_id) DO UPDATE SET
+                consecutive_failures = station_health.consecutive_failures + 1,
+                last_error = EXCLUDED.last_error,
+                updated_at = EXCLUDED.updated_at",
+            &[&source_type, &station_id, &error, &Utc::now()]
+        )?;
+        
+        Ok(())
+    }
+    
+    /// Process backfill queue (run periodically, e.g. once per hour)
+    pub fn process_backfill_queue(&mut self, max_items: usize) -> Result<usize, Box<dyn Error>> {
+        // First, fetch all pending items (read-only operation)
+        let pending_items: Vec<(i32, String, String, DateTime<Utc>, DateTime<Utc>)> = {
+            let client = self.client.as_mut()
+                .ok_or("Daemon not initialized")?;
+            
+            let rows = client.query(
+                "SELECT id, source_type, station_id, gap_start, gap_end
+                 FROM public.backfill_queue
+                 WHERE status = 'pending'
+                 ORDER BY priority DESC, created_at ASC
+                 LIMIT $1",
+                &[&(max_items as i32)]
+            )?;
+            
+            rows.iter().map(|row| {
+                (row.get(0), row.get(1), row.get(2), row.get(3), row.get(4))
+            }).collect()
+        };
+        
+        let mut processed = 0;
+        
+        for (queue_id, source_type, station_id, gap_start, gap_end) in pending_items {
+            // Mark as in_progress
+            {
+                let client = self.client.as_mut().unwrap();
+                client.execute(
+                    "UPDATE public.backfill_queue 
+                     SET status = 'in_progress', last_attempt_at = $1, attempts = attempts + 1
+                     WHERE id = $2",
+                    &[&Utc::now(), &queue_id]
+                )?;
+            }
+            
+            // Fetch data (no self.client borrow here)
+            let fetch_result = match source_type.as_str() {
+                "USGS" => Self::fetch_usgs_dv_gap(&station_id, gap_start, gap_end),
+                "CWMS" => {
+                    eprintln!("CWMS backfill not yet implemented for {}", station_id);
+                    Ok(Vec::new())
+                }
+                "ASOS" => {
+                    eprintln!("ASOS backfill not yet implemented for {}", station_id);
+                    Ok(Vec::new())
+                }
+                _ => Err(format!("Unknown source type: {}", source_type).into())
+            };
+            
+            // Now warehouse the results (separate self.client borrow)
+            match fetch_result {
+                Ok(readings) => {
+                    let inserted = if !readings.is_empty() {
+                        self.warehouse_readings(&readings)?
+                    } else {
+                        0
+                    };
+                    
+                    // Mark as completed
+                    let client = self.client.as_mut().unwrap();
+                    client.execute(
+                        "UPDATE public.backfill_queue 
+                         SET status = 'completed', completed_at = $1
+                         WHERE id = $2",
+                        &[&Utc::now(), &queue_id]
+                    )?;
+                    
+                    // Record in history
+                    client.execute(
+                        "INSERT INTO public.backfill_history 
+                         (queue_id, source_type, station_id, gap_start, gap_end, readings_inserted)
+                         VALUES ($1, $2, $3, $4, $5, $6)",
+                        &[&queue_id, &source_type, &station_id, &gap_start, &gap_end, &(inserted as i32)]
+                    )?;
+                    
+                    processed += 1;
+                    eprintln!("✓ Backfilled {} {} {}-{} ({} readings)", 
+                             source_type, station_id, 
+                             gap_start.format("%Y-%m-%d"), gap_end.format("%Y-%m-%d"),
+                             inserted);
+                }
+                Err(e) => {
+                    // Mark as failed but allow retry
+                    let error_msg = format!("{}", e);
+                    let client = self.client.as_mut().unwrap();
+                    client.execute(
+                        "UPDATE public.backfill_queue 
+                         SET status = 'failed', last_error = $1
+                         WHERE id = $2",
+                        &[&error_msg, &queue_id]
+                    )?;
+                    
+                    eprintln!("✗ Backfill failed for {} {}: {}", source_type, station_id, e);
+                }
+            }
+        }
+        
+        Ok(processed)
+    }
+    
+    /// Fetch USGS daily values for a gap (static method for use in backfill)
+    fn fetch_usgs_dv_gap(
+        site_code: &str,
+        gap_start: DateTime<Utc>,
+        gap_end: DateTime<Utc>
+    ) -> Result<Vec<GaugeReading>, Box<dyn Error>> {
+        let start_date = gap_start.format("%Y-%m-%d").to_string();
+        let end_date = gap_end.format("%Y-%m-%d").to_string();
+        
+        let url = usgs::build_dv_url(
+            &[site_code],
+            &["00060", "00065"], // Discharge and stage
+            &start_date,
+            &end_date,
+        );
+        
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .build()?;
+        
+        let response = client.get(&url).send()?;
+        
+        if !response.status().is_success() {
+            return Err(format!("USGS DV API returned status {}", response.status()).into());
+        }
+        
+        let body = response.text()?;
+        let readings = usgs::parse_iv_response(&body)?;
+        
+        Ok(readings)
+    }
+    
     /// Run one iteration of the monitoring loop for all stations
     pub fn poll_all_stations(&mut self) -> Result<HashMap<String, usize>, Box<dyn Error>> {
         let mut results = HashMap::new();
         
-        // Poll USGS stations
+        // Poll USGS stations in parallel using thread pool
         let stations_snapshot = self.stations.clone();
+        let (tx, rx) = mpsc::channel();
+        
+        // Submit all USGS polls to thread pool
         for station in &stations_snapshot {
-            match self.poll_station(&station.site_code) {
+            let site_code = station.site_code.clone();
+            let tx = tx.clone();
+            
+            self.thread_pool.execute(move || {
+                // Fetch readings and convert error to String for Send compatibility
+                let result = Self::fetch_usgs_readings(&site_code)
+                    .map_err(|e| e.to_string());
+                tx.send((site_code, result)).expect("Failed to send result");
+            });
+        }
+        drop(tx); // Drop original sender so rx knows when all threads are done
+        
+        // Collect results and warehouse them sequentially (database writes must be sequential)
+        for (site_code, fetch_result) in rx {
+            let station = stations_snapshot.iter().find(|s| s.site_code == site_code);
+            
+            // Convert String error back to Box<dyn Error> for compatibility with existing code
+            let fetch_result = fetch_result.map_err(|e| -> Box<dyn Error> { e.into() });
+            
+            match fetch_result {
                 Ok(readings) => {
                     let inserted = self.warehouse_readings(&readings)?;
 
                     // Fire SMS alerts for stage readings that have configured thresholds.
-                    if let Some(thresholds) = &station.thresholds {
-                        if let Some(notifier) = self.notifier.as_mut() {
-                            for reading in readings.iter().filter(|r| r.parameter_code == PARAM_STAGE) {
-                                notifier.process_reading_alert(reading, thresholds);
+                    if let Some(station) = station {
+                        if let Some(thresholds) = &station.thresholds {
+                            if let Some(notifier) = self.notifier.as_mut() {
+                                for reading in readings.iter().filter(|r| r.parameter_code == PARAM_STAGE) {
+                                    notifier.process_reading_alert(reading, thresholds);
+                                }
                             }
                         }
                     }
@@ -871,13 +1183,16 @@ impl Daemon {
                         .map(|dt| dt.with_timezone(&Utc))
                         .max();
 
-                    self.update_monitoring_state(&station.site_code, latest)?;
-                    results.insert(format!("USGS:{}", station.site_code), inserted);
+                    self.update_monitoring_state(&site_code, latest)?;
+                    self.update_station_health_success("USGS", &site_code, latest, inserted)?;
+                    results.insert(format!("USGS:{}", site_code), inserted);
                 }
                 Err(e) => {
-                    eprintln!("Failed to poll USGS {}: {}", station.site_code, e);
-                    self.record_failure(&station.site_code)?;
-                    results.insert(format!("USGS:{}", station.site_code), 0);
+                    let error_msg = format!("{}", e);
+                    eprintln!("Failed to poll USGS {}: {}", site_code, error_msg);
+                    self.record_failure(&site_code)?;
+                    self.update_station_health_failure("USGS", &site_code, &error_msg)?;
+                    results.insert(format!("USGS:{}", site_code), 0);
                 }
             }
         }
@@ -886,10 +1201,14 @@ impl Daemon {
         for location in &self.cwms_locations.clone() {
             match self.poll_cwms_location(&location) {
                 Ok(inserted) => {
+                    // Update station health for CWMS
+                    self.update_station_health_success("CWMS", &location.cwms_location, None, inserted)?;
                     results.insert(format!("CWMS:{}", location.name), inserted);
                 }
                 Err(e) => {
-                    eprintln!("Failed to poll CWMS {}: {}", location.name, e);
+                    let error_msg = format!("{}", e);
+                    eprintln!("Failed to poll CWMS {}: {}", location.name, error_msg);
+                    self.update_station_health_failure("CWMS", &location.cwms_location, &error_msg)?;
                     results.insert(format!("CWMS:{}", location.name), 0);
                 }
             }
@@ -900,10 +1219,13 @@ impl Daemon {
             match self.poll_asos_station(&location.station_id) {
                 Ok(observations) => {
                     let inserted = self.warehouse_asos_observations(&observations)?;
+                    self.update_station_health_success("ASOS", &location.station_id, None, inserted)?;
                     results.insert(format!("ASOS:{}", location.station_id), inserted);
                 }
                 Err(e) => {
-                    eprintln!("Failed to poll ASOS {}: {}", location.station_id, e);
+                    let error_msg = format!("{}", e);
+                    eprintln!("Failed to poll ASOS {}: {}", location.station_id, error_msg);
+                    self.update_station_health_failure("ASOS", &location.station_id, &error_msg)?;
                     results.insert(format!("ASOS:{}", location.station_id), 0);
                 }
             }

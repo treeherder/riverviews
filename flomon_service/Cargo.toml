@@ -23,3 +23,6 @@ tiny_http = "0.12"
 
 # Base64 encoding for Pub/Sub message payloads
 base64 = "0.22"
+
+# Thread pool for parallel data collection
+threadpool = "1.8"
