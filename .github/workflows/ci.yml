@@ -66,11 +66,19 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Restart containers
+      - name: Pull latest and restart containers
         run: |
           set -e
+          # Deploy from the repo clone that has .env — NOT the CI workspace.
+          # The runner user must have the repo cloned at ~/riverviews with a
+          # valid .env file containing POSTGRES_SUPERUSER_PASSWORD etc.
+          REPO="$HOME/riverviews"
+          if [ ! -f "$REPO/.env" ]; then
+            echo "ERROR: $REPO/.env not found. Clone the repo and create .env first."
+            exit 1
+          fi
+          cd "$REPO"
+          git pull origin main
           docker compose up --build -d postgres flomon_service
           echo "Containers restarted. Waiting for HTTP API..."
           for i in $(seq 1 36); do
@@ -80,6 +88,6 @@ jobs:
             fi
             sleep 10
           done
-          echo "Health check timed out (6 min). Check: docker compose logs flomon_service"
+          echo "Health check timed out. Logs:"
+          docker compose logs --tail=50 flomon_service
           exit 1
-        working-directory: ${{ github.workspace }}
